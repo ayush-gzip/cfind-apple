@@ -48,6 +48,11 @@ struct CfindApp: App {
             CommandGroup(replacing: .newItem) {
                 Button("New Agent") { WebDashboard.shared.newAgent() }.keyboardShortcut("n")
             }
+            CommandGroup(after: .toolbar) {
+                Button("Actual Size") { WebDashboard.shared.zoom(by: nil) }.keyboardShortcut("0")
+                Button("Zoom In") { WebDashboard.shared.zoom(by: 0.1) }.keyboardShortcut("+")
+                Button("Zoom Out") { WebDashboard.shared.zoom(by: -0.1) }.keyboardShortcut("-")
+            }
         }
         #endif
     }

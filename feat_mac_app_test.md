@@ -79,6 +79,13 @@ M1 and M2 ran on the old SwiftUI Mac screens, which the web wrapper replaced.
 | M8 | Headless Chrome with a stub `window.webkit.messageHandlers.cfind`: open a chat, press Escape | Posts `session:<path>`, then empty. Pass |
 | M9 | Headless Chrome: the Agents board | Subagents start folded ("3 subagents"); unfolded stays open across board redraws. Pass |
 | M10 | Unit tests after the iPhone screens became iOS only | macOS 20/20, iOS 36/36. Pass |
+| M11 | UI test: ⌘K then Return | the command menu runs New agent; the form opens. Pass |
+| M12 | UI test: ⌘= and ⌘+ zoom in, ⌘- out, ⌘0 resets | the Sessions button grows by over 10%, then returns to its first width. Zoom is kept in UserDefaults `zoom`. Pass |
+
+Finding (M11): after an earlier dialog was closed with Escape, the XCUITest
+accessibility tree did not list the command menu's field, though a log inside the
+app showed the menu open (`keyup Meta palette=true`) and Return ran its first item.
+The test checks the result (the New agent form), not the menu's field.
 
 ## Not tested yet
 

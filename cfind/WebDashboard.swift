@@ -29,6 +29,14 @@ final class WebDashboard: NSObject, WKNavigationDelegate, WKUIDelegate, WKScript
         view.navigationDelegate = self
         view.uiDelegate = self
         view.allowsBackForwardNavigationGestures = false
+        let saved = UserDefaults.standard.double(forKey: "zoom")
+        if saved > 0 { view.pageZoom = saved }
+    }
+
+    /// ⌘+ and ⌘- step the page zoom, ⌘0 resets it. Kept across launches.
+    func zoom(by step: Double?) {
+        view.pageZoom = step.map { min(3, max(0.5, view.pageZoom + $0)) } ?? 1
+        UserDefaults.standard.set(Double(view.pageZoom), forKey: "zoom")
     }
 
     func load() {
