@@ -81,6 +81,7 @@ M1 and M2 ran on the old SwiftUI Mac screens, which the web wrapper replaced.
 | M10 | Unit tests after the iPhone screens became iOS only | macOS 20/20, iOS 36/36. Pass |
 | M11 | UI test: ⌘K then Return | the command menu runs New agent; the form opens. Pass |
 | M12 | UI test: ⌘= and ⌘+ zoom in, ⌘- out, ⌘0 resets | the Sessions button grows by over 10%, then returns to its first width. Zoom is kept in UserDefaults `zoom`. Pass |
+| M13 | UI test: ⌘3 then ⌘1 | ⌘3 opens Sessions (its search button shows), ⌘1 goes back to Overview. No app menu takes these keys. Pass |
 
 Finding (M11): after an earlier dialog was closed with Escape, the XCUITest
 accessibility tree did not list the command menu's field, though a log inside the

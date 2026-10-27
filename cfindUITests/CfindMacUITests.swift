@@ -29,6 +29,13 @@ final class CfindMacUITests: XCTestCase {
         XCTAssertTrue(form.waitForExistence(timeout: 5), "⌘K and Return did not open New agent")
         app.typeKey(.escape, modifierFlags: [])
 
+        // ⌘3 opens Sessions, ⌘1 goes back to Overview.
+        let search = web.buttons["Search full text ↵"]
+        app.typeKey("3", modifierFlags: .command)
+        XCTAssertTrue(search.waitForExistence(timeout: 5), "⌘3 did not open Sessions")
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(search.waitForNonExistence(timeout: 5), "⌘1 did not leave Sessions")
+
         // ⌘+ and ⌘= zoom in, ⌘- out, ⌘0 back. The sidebar grows with the page.
         let button = web.buttons["Sessions"]
         let width = button.frame.width
