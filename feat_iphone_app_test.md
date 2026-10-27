@@ -1,0 +1,121 @@
+# iPhone app: test record
+
+## Scope
+
+A native SwiftUI app for one iPhone (this repo, `cfind-apple`). It pairs with the Mac daemon and shows
+the same data as the browser dashboard: sessions, agents, usage, and the chat view
+with send, images, approvals and questions. It talks to the existing `/api/*` routes
+with a device token; the server side is in `ts/src/devices.ts` and `ts/src/web.ts`.
+
+## Build and run
+
+```sh
+# server side (in the context-find repo)
+cd ts && npm run build && npm test
+launchctl kickstart -k gui/$(id -u)/com.context-find.dashboard
+
+# app (simulator)
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+xcodebuild -project cfind.xcodeproj -scheme cfind \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build-for-testing
+
+# app icon (only after changing the drawing)
+swift tools/make-icon.swift cfind/Assets.xcassets/AppIcon.appiconset/icon-1024.png
+```
+
+UI test against the real daemon. Make a pairing code first (Connections > Pair an
+iPhone, or POST `/api/devices` `{"action":"pair-start"}` with the Mac token; a code
+lasts 5 minutes):
+
+```sh
+TEST_RUNNER_CFIND_BASE=http://127.0.0.1:4319 \
+TEST_RUNNER_CFIND_CODE=<6 digits> \
+TEST_RUNNER_CFIND_CWD=<an existing folder> \
+xcodebuild -project cfind.xcodeproj -scheme cfind \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -resultBundlePath ui.xcresult test-without-building
+xcrun xcresulttool export attachments --path ui.xcresult --output-path ui-att
+```
+
+The `TEST_RUNNER_` prefix is how xcodebuild passes env vars into the test process.
+The app's `-cfind-reset` launch argument clears its Keychain pairing.
+
+## Unit tests (`cfindTests`, 2026-10-27)
+
+Pure logic, no network, no daemon. Fixtures in `cfindTests/Fixtures/` are the shapes the
+daemon sends (metrics snapshot with profiles, a subagent and an open tmux session; a
+workspace with a pending approval, a tool message, an image and a queued item).
+
+```sh
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+xcodebuild test -project cfind.xcodeproj -scheme cfind \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:cfindTests
+```
+
+36 tests pass on iOS (20 on macOS): notification rules (9, moved from the old
+`tools/notify-rules-test.swift`), decoding (5), helpers (6), Markdown (7), model and
+subagent grouping (5), agents board lanes (1), pairing links (3). The Markdown, model,
+board and pairing tests are compiled for iOS only.
+
+CI (`.github/workflows/ci.yml`) runs on every push and pull request to `main`, on a
+`macos-26` runner: build for iOS Simulator and macOS with signing off, then
+`cfindTests` on macOS and on the first available iPhone simulator. The UI tests are not
+run in CI (they need a live daemon and Claude).
+
+## Automated tests in context-find (Node, 98/98 pass, 2026-10-27)
+
+| file | covers |
+| --- | --- |
+| `test/devices.test.ts` | pair with a code, the code works once; bearer token works on API routes; `/api/devices` and `/api/login` refuse a device ("Only from the Mac"); the token is random, only its sha256 is stored; list has no hash; revoke ends access; 5 wrong codes end the code; over 10 tries a minute gives 429; expired code; the saved tailnet Host passes the Host check; a repeated `clientId` send runs once (cached reply, 409 while in flight) |
+| `test/iphone_contract.test.ts` | the metrics snapshot and a workspace agent keep every field `Models.swift` of this app decodes without a default (profile, session, agent, message, tool, queue item, pending) |
+
+## Real end-to-end run (simulator, 2026-10-27)
+
+`CfindUITests.testPairStartAgentApproveAndReply`, iPhone 17 Pro, iOS 27, real daemon,
+Claude Default profile. Passed in 36 s.
+
+| # | step | result |
+| --- | --- | --- |
+| K1 | launch unpaired, type address and code, Pair | Sessions tab loads with live sessions. Pass |
+| K2 | Agents > + > folder, task "Create a file named phone.txt that contains hi. Then reply with only the result of 6 times 7." > Start | chat opens; header "Needs input"; card "Allow Write?" with the file path, `hi` preview, Decline / Allow once / Allow edits this session. Pass |
+| K3 | Allow once | Write row "Done", reply bubble `42` on the left, my bubble on the right. Pass |
+| K4 | type "What is 10 plus 5? Reply with only the number." > send | reply `15`. Pass |
+| K5 | deep link `cfind://pair?url=…&code=…` via `simctl openurl` | iOS asks "Open in cfind?", so the scheme is registered. The fields filling after Open was not checked on screen |
+| K6 | app icon | 1024x1024, no alpha; graphite background, white bubble, blue SF Rounded "c" |
+| K7 | `testBoardUsageAndFullTextSearch`: Agents tab | lanes like the website: Running 1, Idle 3 (sessions open in tmux, marked with a terminal icon). Before: "No agents yet". Pass |
+| K8 | Usage tab | Claude and Codex marks (the website's SVGs, template images) in the profile colours. Pass |
+| K9 | Sessions search "tailscale" + Return | "Message text" section from `/api/search` lists this session (word only in message text). Before: title and folder filter only, no match. The search bar now stays visible (it hid after tab switches). Pass |
+| K10 | real iPhone 17 Pro over Tailscale (mobile data or Wi-Fi) | paired with `<mac>.<tailnet>.ts.net`; works. Quad9 DNS profile on the phone blocked MagicDNS until it was set to Automatic and Quad9 was added as the tailnet's global nameserver |
+
+First run failed in the test, not the app: the folder field was pre-filled with a long
+path shown cut off, so a tap put the cursor mid-text and the deletes left "find/ios"
+behind (agent creation then said ENOENT). The test now deletes, taps the end again,
+and repeats until the field is empty.
+
+## Not tested yet
+
+- Subagents now fold under a "↳ N subagents" row (a `DisclosureGroup`). Unit tests pass; the UI test was not rerun after this change.
+- The 7-day reinstall on the real iPhone.
+- Images from the phone (PhotosPicker, JPEG resize, upload), Take over, Codex sessions,
+  question cards, queued messages and Remove, unpair from the phone, revoke while the
+  app is open, dark mode screenshots.
+- Background behavior: iOS stops the stream when the app leaves the screen; it
+  reconnects when it comes back. No push notifications on a free Apple ID.
+
+## Known limits
+
+- The whole metrics snapshot is sent on every change, as for the browser. Over a
+  phone link this is the main data cost.
+- Pairing over plain `http://` only works on the simulator (`NSAllowsLocalNetworking`).
+  A phone needs the Tailscale HTTPS address.
+
+## Test leftovers
+
+None. The simulator device was revoked and the test agent card removed.
+
+## Rerun before you change this area
+
+1. `npm test` in `ts` (devices and contract tests), in the context-find repo.
+2. `cfindTests` on iOS and macOS (command above).
+3. Build for testing, make a code, run the UI test with the three env vars.
+4. Revoke the simulator device (Connections) and remove the test agent card.

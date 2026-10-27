@@ -1,0 +1,31 @@
+{
+  "profiles": [
+    {
+      "id": "claude", "label": "Claude", "source": "claude",
+      "limits": {
+        "session": {"used": 42.5, "resetsAt": 1795000000},
+        "week": {"used": 10, "resetsAt": 1795500000},
+        "plan": "max", "observedAt": 1794990000000
+      }
+    },
+    {"id": "personal", "label": "Claude · Personal", "source": "claude"},
+    {"id": "codex", "label": "Codex", "source": "codex", "limits": null}
+  ],
+  "sessions": [
+    {
+      "id": "s1", "profile": "claude", "source": "claude",
+      "path": "/home/u/.claude/projects/p/s1.jsonl", "cwd": "/home/u/code/app",
+      "title": "Refactor the parser", "updatedAt": 1794990000000, "state": "running",
+      "open": true, "tmux": true
+    },
+    {
+      "id": "sub1", "profile": "claude", "source": "claude", "path": "/sub/1",
+      "cwd": "/home/u/code/app", "title": "Explore the tests", "parent": "s1",
+      "updatedAt": 1794990001000, "state": "running"
+    },
+    {
+      "id": "s2", "profile": "personal", "source": "claude", "path": "/home/u/.claude-personal/projects/p/s2.jsonl",
+      "cwd": "/home/u/notes", "title": "Plan the week", "updatedAt": 1794980000000, "state": "idle"
+    }
+  ]
+}

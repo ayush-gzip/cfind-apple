@@ -1,0 +1,23 @@
+{
+  "agents": [
+    {
+      "id": "a1", "profile": "claude", "cwd": "/home/u/code/app", "title": "Add a README",
+      "sid": "sid-1", "history": "/home/u/.claude/projects/p/a1.jsonl", "model": "sonnet",
+      "state": "waiting", "startedAt": 1794990000000, "updatedAt": 1794990005000,
+      "messages": [
+        {"id": "m1", "role": "user", "text": "Add a README", "time": 1794990000000},
+        {
+          "id": "m2", "role": "assistant", "text": "Write",
+          "tool": {"name": "Write", "input": "README.md", "output": "ok", "error": false}
+        },
+        {"id": "m3", "role": "user", "text": "Look at this", "images": ["up1"]}
+      ],
+      "queue": [{"text": "then run the tests"}],
+      "error": null,
+      "pending": {
+        "id": 7, "method": "can_use_tool",
+        "params": {"tool_name": "Write", "input": {"file_path": "/home/u/code/app/README.md", "content": "hi"}}
+      }
+    }
+  ]
+}
