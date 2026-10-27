@@ -300,51 +300,62 @@ struct ChatView: View {
             HStack(alignment: .bottom, spacing: 8) {
                 if c.enabled {
                     PhotosPicker(selection: $picks, maxSelectionCount: max(1, 4 - attachments.count), matching: .images) {
-                        Image(systemName: "photo.on.rectangle")
-                            .font(.system(size: 19))
-                            .frame(width: 34, height: 36)
+                        Image(systemName: "plus")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 36, height: 36)
+                            .background(Color.surface, in: Circle())
                     }
+                    .buttonStyle(.plain)
                     .disabled(attachments.count >= 4 || c.decline)
+                    .accessibilityLabel("Attach images")
                 }
-                TextField(c.placeholder, text: $draft, axis: .vertical)
-                    .lineLimit(1...6)
-                    .disabled(!c.enabled)
-                    .padding(.horizontal, 13)
-                    .padding(.vertical, 8)
-                    .background(Color.surface, in: RoundedRectangle(cornerRadius: 19))
-                    .accessibilityIdentifier("composer")
-                if c.stop, let a = agent {
-                    Button {
-                        Task { try? await model.api?.agent(["action": "cancel", "id": a.id]) }
-                    } label: {
-                        Image(systemName: "stop.circle.fill").font(.system(size: 31))
+                // The send arrow sits inside the field, as in Messages. With
+                // nothing typed, a running agent shows stop there instead.
+                HStack(alignment: .bottom, spacing: 6) {
+                    TextField(c.placeholder, text: $draft, axis: .vertical)
+                        .lineLimit(1...6)
+                        .disabled(!c.enabled)
+                        .padding(.vertical, 7)
+                        .accessibilityIdentifier("composer")
+                    if c.stop, let a = agent, canNotSend {
+                        Button {
+                            Task { try? await model.api?.agent(["action": "cancel", "id": a.id]) }
+                        } label: {
+                            Image(systemName: "stop.circle.fill").font(.system(size: 28))
+                        }
+                        .tint(.primary)
+                        .padding(.bottom, 4)
+                        .accessibilityLabel("Stop")
+                    } else if c.enabled {
+                        Button {
+                            Task { await send(c) }
+                        } label: {
+                            Image(systemName: "arrow.up.circle.fill").font(.system(size: 28))
+                        }
+                        .disabled(canNotSend)
+                        .padding(.bottom, 4)
+                        .accessibilityLabel("Send")
+                        .accessibilityIdentifier("send")
                     }
-                    .tint(.primary)
-                    .accessibilityLabel("Stop")
                 }
-                if c.enabled {
-                    Button {
-                        Task { await send(c) }
-                    } label: {
-                        Image(systemName: "arrow.up.circle.fill").font(.system(size: 31))
-                    }
-                    .disabled(canNotSend)
-                    .accessibilityLabel("Send")
-                    .accessibilityIdentifier("send")
-                }
+                .padding(.leading, 14)
+                .padding(.trailing, 4)
+                .frame(minHeight: 36)
+                .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color(.separator)))
             }
             if !c.hint.isEmpty {
                 Text(c.hint)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.leading, c.enabled ? 46 : 4)
+                    .padding(.leading, c.enabled ? 58 : 14)
             }
         }
         .padding(.horizontal, 12)
         .padding(.top, 8)
         .padding(.bottom, 6)
-        .background(.bar)
+        .background(Color(.systemBackground))
         .onChange(of: picks) { _, items in
             guard !items.isEmpty else { return }
             picks = []

@@ -105,6 +105,19 @@ final class CfindUITests: XCTestCase {
         shot(app, "6-follow-up")
     }
 
+    /// Opens a session and types in the message box. Nothing is sent.
+    func testSessionMessageBox() throws {
+        let app = try pairedApp()
+        app.cells.element(boundBy: 1).tap()
+        let composer = app.descendants(matching: .any)["composer"]
+        XCTAssertTrue(composer.waitForExistence(timeout: 10), "no message box")
+        shot(app, "c1-empty")
+        composer.tap()
+        composer.typeText("Draft only, not sent")
+        XCTAssertTrue(app.buttons["send"].isEnabled, "send is off with text in the box")
+        shot(app, "c2-typed")
+    }
+
     /// A bubble whose whole text is the answer, so the prompt and times never match.
     func exact(_ app: XCUIApplication, _ text: String) -> XCUIElement {
         app.staticTexts.matching(NSPredicate(format: "label == %@ OR label == %@", text, text + ".")).firstMatch

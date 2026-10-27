@@ -86,6 +86,7 @@ Claude Default profile. Passed in 36 s.
 | K8 | Usage tab | Claude and Codex marks (the website's SVGs, template images) in the profile colours. Pass |
 | K9 | Sessions search "tailscale" + Return | "Message text" section from `/api/search` lists this session (word only in message text). Before: title and folder filter only, no match. The search bar now stays visible (it hid after tab switches). Pass |
 | K10 | real iPhone 17 Pro over Tailscale (mobile data or Wi-Fi) | paired with `<mac>.<tailnet>.ts.net`; works. Quad9 DNS profile on the phone blocked MagicDNS until it was set to Automatic and Quad9 was added as the tailnet's global nameserver |
+| K11 | message box, Messages style (`testSessionMessageBox`, simulator, dark) | grey + in a circle, bordered field with the send arrow inside, no grey band, hint lines up with the text; send turns on after typing; nothing sent. Stop takes the send spot while a dashboard agent runs and the box is empty (not run). Pass. Installed on the iPhone 2026-10-27 |
 
 First run failed in the test, not the app: the folder field was pre-filled with a long
 path shown cut off, so a tap put the cursor mid-text and the deletes left "find/ios"
