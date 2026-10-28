@@ -1,5 +1,18 @@
 # Mac app: test record
 
+## 2026-10-28: Option-Command-F
+
+- View > Full Screen moved from Shift-Command-F to Option-Command-F, matching the
+  dashboard help (Codex change).
+- It still did nothing in the running app. A WebKit probe (menu item on ⌥⌘F, page
+  focused) showed the menu does get ⌥⌘F, so the cause was not found. Now the page
+  matches `e.code === "KeyF"` with ⌘⌥ (Option turns the key into "ƒ"), stops the
+  event and posts `window:fullscreen`; the app toggles `view.window`, its own window,
+  instead of `NSApp.keyWindow`. The menu item uses the same window.
+- WebKit probe (WKWebView, `-AppleShowScrollBars Always`, zoom 1.3): the page posts
+  `window:fullscreen` on ⌥⌘F. Not checked in the installed app yet.
+- Needs the app rebuilt and reinstalled; an older app ignores the message.
+
 ## Scope
 
 The same `cfind` target runs on macOS 14 or newer. The window is the dashboard website

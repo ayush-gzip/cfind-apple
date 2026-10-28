@@ -194,6 +194,7 @@ final class WebDashboard: NSObject, WKNavigationDelegate, WKUIDelegate, WKScript
         let key = message.body as? String ?? ""
         if key == "window:drag" { return view.dragWindow() }
         if key == "window:zoom" { return zoomWindow() }
+        if key == "window:fullscreen" { return view.window?.toggleFullScreen(nil) ?? () }
         if key == "theme:dark" || key == "theme:light" {
             appearance = NSAppearance(named: key == "theme:dark" ? .darkAqua : .aqua)
             view.window?.appearance = appearance
