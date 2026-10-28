@@ -9,6 +9,7 @@ final class MarkdownTests: XCTestCase {
             case .text(let t): "text:\(t)"
             case .heading(let h): "heading:\(h)"
             case .code(let l, let c): "code[\(l)]:\(c)"
+            case .table(let h, let rows): "table:" + ([h] + rows).map { $0.joined(separator: ",") }.joined(separator: "/")
             }
         }
     }
@@ -35,6 +36,19 @@ final class MarkdownTests: XCTestCase {
 
     func testEmptyText() {
         XCTAssertTrue(Markdown.blocks("").isEmpty)
+    }
+
+    func testTables() {
+        let text = "Sizes:\n| Item | Count |\n|---|:--:|\n| A | **1** |\n|B|2|3|\n\nafter"
+        XCTAssertEqual(describe(Markdown.blocks(text)),
+                       ["text:Sizes:", "table:Item,Count/A,**1**/B,2,3", "text:after"])
+        // No pipes in the next line: the table ends there.
+        XCTAssertEqual(describe(Markdown.blocks("a | b\n-- | --\nplain")), ["table:a,b", "text:plain"])
+        // Without the divider line, pipes are plain text.
+        XCTAssertEqual(describe(Markdown.blocks("| a | b |\n| c | d |")), ["text:| a | b |\n| c | d |"])
+        XCTAssertEqual(describe(Markdown.blocks("| a |\n|-|")), ["text:| a |\n|-|"])
+        // Inside fenced code, a table stays code.
+        XCTAssertEqual(describe(Markdown.blocks("```\n| a |\n|---|\n```")), ["code[]:| a |\n|---|"])
     }
 
     func testInlineStylesAndBullets() {

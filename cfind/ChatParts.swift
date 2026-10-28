@@ -170,6 +170,54 @@ struct CodeBlock: View {
     }
 }
 
+/// A Markdown table that scrolls sideways when it is wider than the bubble.
+struct TableBlock: View {
+    let head: [String]
+    let rows: [[String]]
+
+    var body: some View {
+        // A table that fits keeps its own width; the scroll view would fill the bubble.
+        ViewThatFits(in: .horizontal) {
+            grid.fixedSize(horizontal: true, vertical: false)
+            ScrollView(.horizontal, showsIndicators: false) { grid }
+        }
+        .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.line.opacity(0.6)))
+    }
+
+    var grid: some View {
+        Grid(alignment: .topLeading, horizontalSpacing: 0, verticalSpacing: 0) {
+            GridRow { ForEach(head.indices, id: \.self) { cell(head[$0]).fontWeight(.semibold) } }
+            ForEach(rows.indices, id: \.self) { r in
+                Divider()
+                GridRow { ForEach(rows[r].indices, id: \.self) { cell(rows[r][$0]) } }
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    func cell(_ text: String) -> some View {
+        UpTo(width: 180) { Text(Markdown.inline(text)).font(.footnote) }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 6)
+    }
+}
+
+/// As wide as its text needs, up to `width`, then the text wraps. A frame can't do
+/// this inside a sideways ScrollView, which offers no width to wrap at.
+struct UpTo: Layout {
+    let width: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let s = subviews.first else { return .zero }
+        return s.sizeThatFits(ProposedViewSize(width: min(s.sizeThatFits(.unspecified).width, width), height: nil))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, proposal: ProposedViewSize(width: bounds.width, height: nil))
+    }
+}
+
 /// Markdown in chat: fenced code becomes a code block; headings, lists and
 /// inline styles render natively. Transcript HTML is never rendered.
 struct MarkdownText: View {
@@ -185,6 +233,8 @@ struct MarkdownText: View {
                     Text(Markdown.inline(line)).font(.headline)
                 case .text(let para):
                     Text(Markdown.inline(para))
+                case .table(let head, let rows):
+                    TableBlock(head: head, rows: rows)
                 }
             }
         }
@@ -196,6 +246,17 @@ enum Markdown {
         case text(String)
         case heading(String)
         case code(String, String)
+        case table([String], [[String]])
+    }
+
+    /// The line under a table's header, as the web page reads it: `|---|:--:|`.
+    static let divider = #"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$"#
+
+    static func cells(_ row: String) -> [String] {
+        var t = row.trimmingCharacters(in: .whitespaces)
+        if t.hasPrefix("|") { t.removeFirst() }
+        if t.hasSuffix("|") { t.removeLast() }
+        return t.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
     }
 
     static func blocks(_ text: String) -> [Block] {
@@ -204,7 +265,11 @@ enum Markdown {
             if !para.isEmpty { out.append(.text(para.joined(separator: "\n"))) }
             para = []
         }
-        for line in text.components(separatedBy: "\n") {
+        let lines = text.components(separatedBy: "\n")
+        var i = 0
+        while i < lines.count {
+            let line = lines[i]
+            i += 1
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             if trimmed.hasPrefix("```") {
                 if let c = code {
@@ -220,6 +285,15 @@ enum Markdown {
             } else if let r = line.range(of: #"^#{1,6}\s+"#, options: .regularExpression) {
                 flush()
                 out.append(.heading(String(line[r.upperBound...])))
+            } else if line.contains("|"), i < lines.count, lines[i].range(of: divider, options: .regularExpression) != nil {
+                flush()
+                var rows: [[String]] = []
+                i += 1
+                while i < lines.count, lines[i].contains("|"), !lines[i].trimmingCharacters(in: .whitespaces).isEmpty {
+                    rows.append(cells(lines[i]))
+                    i += 1
+                }
+                out.append(.table(cells(line), rows))
             } else if trimmed.isEmpty {
                 flush()
             } else {

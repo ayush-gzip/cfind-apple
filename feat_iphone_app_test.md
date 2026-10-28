@@ -237,6 +237,26 @@ Unit tests: 46 on iOS, 33 on macOS. The UI test clears `-cfind-reset` before
 a real push through Bark's server to a phone (needs the user's Bark key), and the away
 check (system state).
 
+## Markdown tables in chat (2026-10-28)
+
+Before, a table showed as raw `| a | b |` lines. Now `Markdown.blocks` returns
+`.table(head, rows)` for a line with `|` followed by a divider line (`|---|:--:|`, same
+regex as the web page). Rows go on while lines have `|` and are not blank. Inside
+fenced code a table stays code. `TableBlock` shows a `Grid`: header semibold, a divider
+between rows, inline Markdown in cells, each column as wide as its text up to 180 pt
+(the `UpTo` layout; a frame can't wrap text inside a sideways ScrollView). A table that
+fits keeps its own width; a wider one scrolls sideways (`ViewThatFits`). Column `:`
+alignment is not used.
+
+- `MarkdownTests.testTables`: header/rows, ragged rows, inline Markdown kept for the
+  view, divider without pipes, no divider = text, single `-` divider = text, fenced code.
+- Visual check (temporary test, not kept): a `Bubble` with a 7-column table and a 2x2
+  table in a 393 pt window on the iPhone 17 Pro simulator, light and dark, drawn with
+  `drawHierarchy` (the window needs the app's `UIWindowScene`, or it draws blank).
+  Wide table: columns wrap at 180 pt and scroll; at offset 400 the last columns show.
+  2x2 table: box hugs the table. Pass.
+- iOS unit tests 47/47, Mac build OK.
+
 ## Known limits
 
 - The first metrics event is the whole snapshot (about 500 KB); after that only
