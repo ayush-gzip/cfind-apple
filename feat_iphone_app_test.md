@@ -134,6 +134,50 @@ To regenerate the fixture after a change to `delta.ts` (uses the encoder directl
 Not tested yet: the chat stream against the real daemon from the simulator or the
 phone, reconnect after a daemon restart, and the delta stream over Tailscale.
 
+## Send now, Stop, terminal view (2026-10-28)
+
+What changed (matches the website):
+- A queued message to a working dashboard agent has "Send now" beside "Remove from
+  queue" (`send-now`: Claude interrupt, Codex `turn/interrupt`; the queue then runs).
+- A running terminal chat shows Stop in the send spot when the box is empty (`live-stop`:
+  Esc, then Ctrl+U and Backspace). After a message to a running Claude terminal chat,
+  "Send now" sits next to the hint (`live-key` `send-now` = Ctrl+X Ctrl+S) until it is
+  tapped or the session stops running. Not for Codex terminal chats (no such key).
+- Terminal view (`TerminalCard` in `ChatParts.swift`): the tmux pane as plain text,
+  read from `/api/live-screen` every second, with ↑ ↓ ← → Tab Esc ↵ buttons
+  (`live-key`). It opens by itself while the session waits; the toolbar terminal button
+  shows or hides it; hiding lasts until the state changes. The disabled box says
+  "Answer in the terminal view above."
+
+Harness: `tools/phone-harness.mjs` is a scratch daemon with its own HOME, data dir, port
+and tmux socket, plus a fake Claude. It has one dashboard agent on "slow task" (60 s; other
+prompts get "reply to <text>"). It also has a tmux session "Terminal test" whose fake
+TUI draws a colour menu. Up and Down move it, Enter picks and goes running, typed text
+prints "Got: …", Ctrl+X Ctrl+S prints "Sent now", and Esc prints "Stopped" and goes idle.
+It prints one JSON line `{base, code, token, keysLog, sid, profile, agentId}`. Stdin takes
+`reset`, `state waiting|running|idle`, `keys`, `code`, `agent`, `queue <id> <text>`, `screen`.
+SIGTERM cleans everything up.
+
+```sh
+cd <context-find>/ts && node --loader ./test/typescript-loader.mjs <cfind-apple>/tools/phone-harness.mjs $PWD
+# then, with base and code from its first line:
+TEST_RUNNER_CFIND_BASE=<base> TEST_RUNNER_CFIND_CODE=<code> xcodebuild test-without-building \
+  -project cfind.xcodeproj -scheme cfind -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -only-testing:cfindUITests/CfindUITests/testSendNowStopAndTerminalView
+```
+Start a fresh harness for each run (the agent and the menu keep their state).
+
+| # | case (`testSendNowStopAndTerminalView`) | result |
+| --- | --- | --- |
+| K12 | working agent, queue "then this" | dashed bubble, "Send now" + "Remove from queue"; no Send now before. Tap: "reply to then this" at once, Send now gone. Pass |
+| K13 | terminal chat waiting | terminal view opens by itself with the menu; ↓ moves ❯ to Blue; ↵ picks; the view hides when it goes running. Pass |
+| K14 | terminal chat running | Stop in the empty box; "stop the ping" sent; "Send now" by the hint; tap: pane shows "Sent now", link gone; toolbar button shows the view again. Pass |
+| K15 | Stop | pane shows "Stopped", session idle, Stop gone. Pass |
+| K16 | light and dark screenshots | keys fit one row (↵ symbol, "Enter" wrapped before); blank rows above a short pane (a real 40-row pane fills it). Pass |
+
+Not tested: a real Claude TUI question from the phone (the keys are the ones the website
+uses, probed on Claude 2.1.312); a Codex terminal menu; the real iPhone.
+
 ## Known limits
 
 - The first metrics event is the whole snapshot (about 500 KB); after that only

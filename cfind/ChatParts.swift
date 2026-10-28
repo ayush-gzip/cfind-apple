@@ -296,6 +296,88 @@ struct RemoteImage: View {
     }
 }
 
+/// The tmux pane of a terminal chat as plain text, read every second, with the
+/// keys its menus need, so a terminal question can be answered from the phone.
+struct TerminalCard: View {
+    @Environment(AppModel.self) private var model
+    let session: Session
+    @State private var screen = ""
+    @State private var readError: String?
+    @State private var keyError: String?
+
+    private struct Screen: Decodable { let screen: String }
+    private static let arrows = [("Up", "arrow.up"), ("Down", "arrow.down"), ("Left", "arrow.left"), ("Right", "arrow.right")]
+
+    var body: some View {
+        VStack(spacing: 8) {
+            ScrollView([.horizontal, .vertical]) {
+                Text(readError ?? (screen.isEmpty ? "Reading the terminal…" : screen))
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(readError == nil ? Color.primary : Color.red)
+                    .fixedSize()
+                    .padding(10)
+                    .accessibilityIdentifier("terminal-screen")
+            }
+            .defaultScrollAnchor(.bottomLeading)
+            .frame(maxWidth: .infinity, maxHeight: 220)
+            .background(Color.surface, in: RoundedRectangle(cornerRadius: 12))
+            HStack(spacing: 6) {
+                ForEach(Self.arrows, id: \.0) { key, symbol in
+                    keyButton(key) { Image(systemName: symbol) }.accessibilityLabel(key)
+                }
+                keyButton("Tab") { Text("Tab") }
+                keyButton("Escape") { Text("Esc") }
+                keyButton("Enter") { Image(systemName: "return") }.accessibilityLabel("Enter")
+            }
+            if let keyError {
+                Text(keyError)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .task(id: session.id) {
+            while !Task.isCancelled {
+                await read()
+                try? await Task.sleep(for: .seconds(1))
+            }
+        }
+    }
+
+    func keyButton(_ key: String, @ViewBuilder label: () -> some View) -> some View {
+        Button {
+            Task {
+                do {
+                    keyError = nil
+                    try await model.api?.agent(["action": "live-key", "profile": session.profile, "sid": session.id, "key": key])
+                    await read()
+                } catch {
+                    keyError = error.localizedDescription
+                }
+            }
+        } label: {
+            label()
+                .font(.footnote.weight(.medium))
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, minHeight: 30)
+        }
+        .buttonStyle(.bordered)
+        .accessibilityIdentifier("key-" + key)
+    }
+
+    func read() async {
+        guard let api = model.api else { return }
+        do {
+            let r: Screen = try await api.get("api/live-screen", ["profile": session.profile, "sid": session.id])
+            // tmux sends every row of the pane; the blank ones at the end only push the text up.
+            screen = r.screen.replacing(/\s+$/, with: "")
+            readError = nil
+        } catch {
+            if !Task.isCancelled { readError = error.localizedDescription }
+        }
+    }
+}
+
 /// An approval or a question from a dashboard agent.
 struct PendingCard: View {
     let agent: Agent

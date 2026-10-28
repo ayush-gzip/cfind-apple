@@ -118,6 +118,68 @@ final class CfindUITests: XCTestCase {
         shot(app, "c2-typed")
     }
 
+    /// Needs tools/phone-harness.mjs (a scratch daemon): a dashboard agent working
+    /// on "slow task", and a tmux session "Terminal test" waiting on a menu.
+    func testSendNowStopAndTerminalView() throws {
+        let app = try pairedApp()
+        let composer = app.descendants(matching: .any)["composer"]
+
+        // A queued message to a working agent goes at once.
+        app.tabBars.buttons["Agents"].tap()
+        app.staticTexts["slow task"].firstMatch.tap()
+        XCTAssertTrue(composer.waitForExistence(timeout: 10), "no message box")
+        XCTAssertFalse(app.buttons["send-now"].exists)
+        composer.tap()
+        composer.typeText("then this")
+        app.buttons["send"].tap()
+        XCTAssertTrue(app.buttons["send-now"].waitForExistence(timeout: 10), "no Send now on the queued message")
+        shot(app, "s1-queued")
+        app.buttons["send-now"].tap()
+        XCTAssertTrue(exact(app, "reply to then this").waitForExistence(timeout: 10), "the queued message did not run")
+        XCTAssertFalse(app.buttons["send-now"].exists)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+
+        // A terminal menu is answered with the key buttons.
+        app.tabBars.buttons["Sessions"].tap()
+        app.staticTexts["Terminal test"].firstMatch.tap()
+        let screen = app.staticTexts["terminal-screen"]
+        XCTAssertTrue(screen.waitForExistence(timeout: 10), "no terminal view while it waits")
+        XCTAssertTrue(until { screen.label.contains("Pick a colour") }, screen.label)
+        app.buttons["key-Down"].tap()
+        XCTAssertTrue(until { screen.label.contains("❯ 2. Blue") }, screen.label)
+        shot(app, "t1-menu")
+        app.buttons["key-Enter"].tap()
+        XCTAssertTrue(until(15) { !screen.exists }, "the terminal view stayed after the answer")
+
+        // While it works: Stop, and Send now after a message.
+        XCTAssertTrue(app.buttons["stop"].waitForExistence(timeout: 10), "no Stop while it works")
+        composer.tap()
+        composer.typeText("stop the ping")
+        app.buttons["send"].tap()
+        XCTAssertTrue(app.buttons["send-now"].waitForExistence(timeout: 10), "no Send now after a message")
+        shot(app, "t2-send-now")
+        app.buttons["send-now"].tap()
+        XCTAssertTrue(until { !app.buttons["send-now"].exists }, "Send now stayed")
+        app.buttons["terminal-toggle"].tap()
+        XCTAssertTrue(until { screen.exists && screen.label.contains("Got: stop the ping") && screen.label.contains("Sent now") },
+                      screen.exists ? screen.label : "no terminal view")
+        shot(app, "t3-running")
+        app.buttons["stop"].tap()
+        XCTAssertTrue(until(15) { !app.buttons["stop"].exists }, "still running after Stop")
+        app.buttons["terminal-toggle"].tap()
+        XCTAssertTrue(until { screen.exists && screen.label.contains("Stopped") }, screen.exists ? screen.label : "no terminal view")
+        shot(app, "t4-stopped")
+    }
+
+    func until(_ seconds: TimeInterval = 10, _ check: () -> Bool) -> Bool {
+        let end = Date().addingTimeInterval(seconds)
+        while Date() < end {
+            if check() { return true }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+        }
+        return check()
+    }
+
     /// A bubble whose whole text is the answer, so the prompt and times never match.
     func exact(_ app: XCUIApplication, _ text: String) -> XCUIElement {
         app.staticTexts.matching(NSPredicate(format: "label == %@ OR label == %@", text, text + ".")).firstMatch

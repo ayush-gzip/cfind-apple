@@ -50,6 +50,10 @@ struct ChatView: View {
     @State private var toast: String?
     @State private var atBottom = true
     @State private var confirmTakeover = false
+    /// Hiding the terminal view lasts until the session's state changes.
+    @State private var term: (state: String, show: Bool)?
+    /// A message waits in a busy Claude terminal; Send now types Ctrl+X Ctrl+S.
+    @State private var sentWhileBusy = false
 
     init(target: ChatTarget) {
         _current = State(initialValue: target)
@@ -63,6 +67,18 @@ struct ChatView: View {
     var session: Session? {
         if case .session(let path) = current { return model.snapshot?.sessions.first { $0.path == path } }
         return nil
+    }
+
+    var inTmux: Bool {
+        guard let s = session else { return false }
+        return s.parent == nil && s.open == true && s.tmux == true
+    }
+
+    /// A tmux session shows its pane while a terminal menu waits, or when asked.
+    var termShown: Bool {
+        guard let s = session, inTmux else { return false }
+        if let term, term.state == s.state { return term.show }
+        return s.state == "waiting"
     }
 
     var transcript: String? {
@@ -127,6 +143,9 @@ struct ChatView: View {
                     }
             }
         }
+        .onChange(of: state) { _, now in
+            if now != "running" { sentWhileBusy = false }
+        }
         // iOS drops the stream in the background; a new one starts on return.
         .task(id: "\(transcript ?? "")|\(phase == .background)") { await follow() }
     }
@@ -137,6 +156,15 @@ struct ChatView: View {
 
     @ViewBuilder var menu: some View {
         let c = composerState
+        if inTmux, let s = session {
+            Button {
+                term = (s.state, !termShown)
+            } label: {
+                Image(systemName: termShown ? "terminal.fill" : "terminal")
+            }
+            .accessibilityLabel(termShown ? "Hide terminal view" : "Show terminal view")
+            .accessibilityIdentifier("terminal-toggle")
+        }
         if c.takeover {
             Button("Take over") { confirmTakeover = true }
         } else if let a = agent, !activeStates.contains(a.state) {
@@ -245,8 +273,20 @@ struct ChatView: View {
         case .queued(let index, let q):
             VStack(alignment: .trailing, spacing: 4) {
                 Bubble(message: Message(id: "q", role: "user", text: q.text, images: q.images), user: true, label: "", queued: true)
-                Button("Remove from queue", role: .destructive) {
-                    Task { try? await model.api?.agent(["action": "unqueue", "id": agent?.id ?? "", "index": index]) }
+                HStack(spacing: 14) {
+                    // Stops the reply, so this message goes at once.
+                    if let a = agent, activeStates.contains(a.state) {
+                        Button("Send now") {
+                            Task {
+                                do { try await model.api?.agent(["action": "send-now", "id": a.id]) }
+                                catch { self.error = error.localizedDescription }
+                            }
+                        }
+                        .accessibilityIdentifier("send-now")
+                    }
+                    Button("Remove from queue", role: .destructive) {
+                        Task { try? await model.api?.agent(["action": "unqueue", "id": agent?.id ?? "", "index": index]) }
+                    }
                 }
                 .font(.caption)
             }
@@ -289,12 +329,13 @@ struct ChatView: View {
                 enabled: true,
                 placeholder: idle ? "Message \(label) in its terminal…" : "Message \(label) while it works…",
                 hint: idle ? "Types into its tmux pane" : "Claude reads this before it finishes",
+                stop: s.state == "running",
                 live: true)
         }
         let reason: String? =
             s.parent != nil ? "Subagent transcripts are read-only."
             : s.open == true && s.tmux == true
-                ? (s.state == "waiting" ? "Waiting for an answer in its terminal. Answer there." : "Its state is unclear. Reply in its terminal.")
+                ? (s.state == "waiting" ? "Answer in the terminal view above." : "Its state is unclear. Open the terminal view to see it.")
             : s.open == true && idle ? "Open in a terminal outside tmux. Reply there, or take over to continue here."
             : s.open == true || ["running", "waiting", "stale"].contains(s.state)
                 ? "Open in another window. Reply there, or quit it there to continue here."
@@ -319,6 +360,7 @@ struct ChatView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .onTapGesture { self.error = nil }
             }
+            if termShown, let s = session { TerminalCard(session: s) }
             if !attachments.isEmpty { attachmentStrip }
             HStack(alignment: .bottom, spacing: 8) {
                 if c.enabled {
@@ -341,15 +383,16 @@ struct ChatView: View {
                         .disabled(!c.enabled)
                         .padding(.vertical, 7)
                         .accessibilityIdentifier("composer")
-                    if c.stop, let a = agent, canNotSend {
+                    if c.stop, canNotSend {
                         Button {
-                            Task { try? await model.api?.agent(["action": "cancel", "id": a.id]) }
+                            Task { await stop() }
                         } label: {
                             Image(systemName: "stop.circle.fill").font(.system(size: 28))
                         }
                         .tint(.primary)
                         .padding(.bottom, 4)
                         .accessibilityLabel("Stop")
+                        .accessibilityIdentifier("stop")
                     } else if c.enabled {
                         Button {
                             Task { await send(c) }
@@ -377,11 +420,17 @@ struct ChatView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.leading, 58)
             } else if !c.hint.isEmpty {
-                Text(c.hint)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.leading, c.enabled ? 58 : 14)
+                HStack(spacing: 8) {
+                    Text(c.hint)
+                        .foregroundStyle(.secondary)
+                    if c.live && sentWhileBusy {
+                        Button("Send now") { Task { await sendNow() } }
+                            .accessibilityIdentifier("send-now")
+                    }
+                }
+                .font(.caption2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, c.enabled ? 58 : 14)
             }
         }
         .padding(.horizontal, 12)
@@ -497,6 +546,8 @@ struct ChatView: View {
                 if c.live {
                     try await api.agent(["action": "live-send", "profile": s.profile, "sid": s.id, "prompt": text, "images": images])
                     withAnimation { toast = "Sent to its terminal" }
+                    // Ctrl+X Ctrl+S is Claude's; Codex has no such key.
+                    if s.state == "running" && s.source == "claude" { sentWhileBusy = true }
                 } else {
                     let data = try await api.agentData(
                         ["action": "create", "profile": s.profile, "cwd": s.cwd, "sid": s.id, "prompt": text, "images": images])
@@ -512,6 +563,30 @@ struct ChatView: View {
             }
         } catch {
             (draft, attachments) = kept
+            self.error = error.localizedDescription
+        }
+    }
+
+    func stop() async {
+        do {
+            if let a = agent {
+                try await model.api?.agent(["action": "cancel", "id": a.id])
+            } else if let s = session {
+                try await model.api?.agent(["action": "live-stop", "profile": s.profile, "sid": s.id])
+                sentWhileBusy = false
+            }
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    /// Stops the reply or ! command in the terminal, so what waits is sent at once.
+    func sendNow() async {
+        guard let s = session else { return }
+        do {
+            try await model.api?.agent(["action": "live-key", "key": "send-now", "profile": s.profile, "sid": s.id])
+            sentWhileBusy = false
+        } catch {
             self.error = error.localizedDescription
         }
     }
