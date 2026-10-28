@@ -270,6 +270,20 @@ final class DashboardWebView: WKWebView {
         super.mouseDown(with: event)
     }
 
+    /// The mouse's side buttons go back and forward, as in a browser. The page
+    /// keeps a history step for each section and each chat.
+    override func otherMouseDown(with event: NSEvent) {
+        if ![3, 4].contains(event.buttonNumber) { super.otherMouseDown(with: event) }
+    }
+
+    override func otherMouseUp(with event: NSEvent) {
+        switch event.buttonNumber {
+        case 3: evaluateJavaScript("history.back()")
+        case 4: evaluateJavaScript("history.forward()")
+        default: super.otherMouseUp(with: event)
+        }
+    }
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         if let window { attached?(window) }
