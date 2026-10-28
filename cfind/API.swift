@@ -41,6 +41,149 @@ enum LiveEvent {
     case workspace([Agent])
 }
 
+/// A transcript's chat: whole on the first event and after a reconnect, then only
+/// the new or changed messages.
+enum ChatEvent {
+    case chat(Conversation)
+    case delta(Conversation)
+}
+
+/// Turns the live stream's whole and `-delta` events back into whole values. The
+/// Mac sends each snapshot once, then only what changed (context-find src/delta.ts).
+struct LiveMerge {
+    private(set) var snapshot: Snapshot?
+    /// Kept as plain JSON: agent changes are partial and merge before decoding.
+    private var workspace: [String: Any]?
+
+    mutating func take(_ event: String, _ data: Data) throws -> LiveEvent? {
+        switch event {
+        case "metrics":
+            let s = try JSONDecoder().decode(Snapshot.self, from: data)
+            snapshot = s
+            return .metrics(s)
+        case "metrics-delta":
+            guard var s = snapshot else { return nil }
+            // Most deltas only move the clock; the apps redraw for real changes only.
+            guard s.apply(try JSONDecoder().decode(MetricsDelta.self, from: data)) else { return nil }
+            snapshot = s
+            return .metrics(s)
+        case "workspace":
+            workspace = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            return .workspace(try JSONDecoder().decode(Workspace.self, from: data).agents)
+        case "workspace-delta":
+            guard let w = workspace, let d = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else { return nil }
+            let next = JSONDelta.apply(w, d)
+            workspace = next
+            let json = try JSONSerialization.data(withJSONObject: next)
+            return .workspace(try JSONDecoder().decode(Workspace.self, from: json).agents)
+        default:
+            return nil
+        }
+    }
+}
+
+/// The parts of a metrics delta the apps use.
+struct MetricsDelta: Decodable {
+    struct Fields: Decodable {
+        var profiles: [Profile]?
+        var sessions: [Session]?
+    }
+    struct Rows: Decodable {
+        var upsert: [Session]?
+        var removed: [String]?
+    }
+    struct Lists: Decodable {
+        var sessions: Rows?
+    }
+    var set: Fields?
+    var lists: Lists?
+}
+
+extension Snapshot {
+    /// False when the delta changed nothing the apps show.
+    mutating func apply(_ d: MetricsDelta) -> Bool {
+        var changed = false
+        if let p = d.set?.profiles {
+            profiles = p
+            changed = true
+        }
+        if let all = d.set?.sessions {
+            sessions = all
+            changed = true
+        }
+        if let rows = d.lists?.sessions {
+            var byPath = Dictionary(sessions.map { ($0.path, $0) }, uniquingKeysWith: { $1 })
+            for s in rows.upsert ?? [] { byPath[s.path] = s }
+            for path in rows.removed ?? [] { byPath[path] = nil }
+            // The Mac's order: newest first, then by path.
+            sessions = byPath.values.sorted {
+                $0.updatedAt != $1.updatedAt ? $0.updatedAt > $1.updatedAt : $0.path < $1.path
+            }
+            changed = true
+        }
+        return changed
+    }
+}
+
+/// The merge from context-find's dashboard/delta.js, on plain JSON. Lists change by
+/// key; an agent's change lists only its changed fields (null means removed), and
+/// its messages change by id, with streamed text sent as `append`.
+enum JSONDelta {
+    static func apply(_ snap: [String: Any], _ d: [String: Any]) -> [String: Any] {
+        var next = snap
+        for (name, value) in d["set"] as? [String: Any] ?? [:] { next[name] = value }
+        for (name, list) in d["lists"] as? [String: Any] ?? [:] {
+            next[name] = merge(snap[name] as? [[String: Any]] ?? [], list as? [String: Any] ?? [:],
+                               nested: name == "agents" ? "messages" : nil)
+        }
+        return next
+    }
+
+    static func key(_ item: [String: Any]) -> String {
+        switch item["id"] {
+        case let s as String: s
+        case let n as NSNumber: n.stringValue
+        default: ""
+        }
+    }
+
+    static func merge(_ list: [[String: Any]], _ d: [String: Any], nested: String?) -> [[String: Any]] {
+        var order: [String] = [], byKey: [String: [String: Any]] = [:]
+        func put(_ k: String, _ item: [String: Any]) {
+            if byKey[k] == nil { order.append(k) }
+            byKey[k] = item
+        }
+        for item in list { put(key(item), item) }
+        for item in d["upsert"] as? [[String: Any]] ?? [] {
+            let k = key(item)
+            guard let old = byKey[k], let nested else {
+                put(k, item)
+                continue
+            }
+            var next = old
+            for (field, value) in item {
+                if value is NSNull {
+                    next[field] = nil
+                } else if field == nested, let patch = value as? [String: Any] {
+                    next[field] = merge(old[field] as? [[String: Any]] ?? [], patch, nested: nil)
+                } else {
+                    next[field] = value
+                }
+            }
+            byKey[k] = next
+        }
+        for k in d["removed"] as? [String] ?? [] { byKey[k] = nil }
+        for pair in d["append"] as? [[Any]] ?? [] {
+            guard pair.count == 2, let k = pair[0] as? String, let text = pair[1] as? String,
+                  var m = byKey[k] else { continue }
+            m["text"] = (m["text"] as? String ?? "") + text
+            byKey[k] = m
+        }
+        return (d["order"] as? [String] ?? order).compactMap { byKey[$0] }
+    }
+}
+
 struct API {
     let pairing: Pairing
 
@@ -152,13 +295,37 @@ struct API {
         try Self.check(data, response)
     }
 
-    /// Server-sent events. Each event is one `data:` line; `lines` drops blank
-    /// lines, so an event is handled as soon as its data line arrives.
+    /// Sessions, limits and dashboard agents, kept whole from the stream's deltas.
     func events() -> AsyncThrowingStream<LiveEvent, Error> {
+        stream("api/events", ["delta": "1"]) {
+            var merge = LiveMerge()
+            return { try merge.take($0, $1) }
+        }
+    }
+
+    /// A transcript's messages, pushed by the Mac as soon as the file changes.
+    func chatEvents(_ path: String) -> AsyncThrowingStream<ChatEvent, Error> {
+        stream("api/chat-events", ["path": path]) {
+            { event, data in
+                switch event {
+                case "chat": .chat(try JSONDecoder().decode(Conversation.self, from: data))
+                case "chat-delta": .delta(try JSONDecoder().decode(Conversation.self, from: data))
+                default: nil
+                }
+            }
+        }
+    }
+
+    /// Server-sent events. Each event is one `data:` line; `lines` drops blank
+    /// lines, so an event is handled as soon as its data line arrives. `handler`
+    /// makes the function that reads each event, once per stream.
+    private func stream<T>(_ path: String, _ query: [String: String],
+                           _ handler: @escaping () -> (String, Data) throws -> T?) -> AsyncThrowingStream<T, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    let (bytes, response) = try await Self.session.bytes(for: request("api/events"))
+                    let handle = handler()
+                    let (bytes, response) = try await Self.session.bytes(for: request(path, query))
                     if let http = response as? HTTPURLResponse, http.statusCode != 200 {
                         throw http.statusCode == 403
                             ? APIError.unpaired : APIError.server("Live updates failed (\(http.statusCode))")
@@ -167,13 +334,8 @@ struct API {
                     for try await line in bytes.lines {
                         if line.hasPrefix("event: ") {
                             event = String(line.dropFirst(7))
-                        } else if line.hasPrefix("data: ") {
-                            let data = Data(line.utf8.dropFirst(6))
-                            if event == "metrics" {
-                                continuation.yield(.metrics(try JSONDecoder().decode(Snapshot.self, from: data)))
-                            } else if event == "workspace" {
-                                continuation.yield(.workspace(try JSONDecoder().decode(Workspace.self, from: data).agents))
-                            }
+                        } else if line.hasPrefix("data: "), let value = try handle(event, Data(line.utf8.dropFirst(6))) {
+                            continuation.yield(value)
                         }
                     }
                     continuation.finish()

@@ -166,6 +166,22 @@ struct Workspace: Decodable {
 struct Conversation: Decodable {
     var messages: [Message]
     var omitted: Int
+
+    /// A chat-delta: a message with a known id is replaced where it is, a new one
+    /// goes at the end. The Mac shows the newest 400.
+    static func merge(_ old: [Message], _ new: [Message], keep: Int = 400) -> [Message] {
+        var out = old
+        var index = Dictionary(old.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { $1 })
+        for m in new {
+            if let i = index[m.id] {
+                out[i] = m
+            } else {
+                index[m.id] = out.count
+                out.append(m)
+            }
+        }
+        return Array(out.suffix(keep))
+    }
 }
 
 let activeStates: Set = ["running", "waiting", "queued"]

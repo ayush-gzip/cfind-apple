@@ -36,6 +36,7 @@ struct Attachment {
 struct ChatView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var phase
     @State private var current: ChatTarget
     @State private var history: [Message] = []
     @State private var omitted = 0
@@ -126,7 +127,8 @@ struct ChatView: View {
                     }
             }
         }
-        .task(id: transcript) { await follow() }
+        // iOS drops the stream in the background; a new one starts on return.
+        .task(id: "\(transcript ?? "")|\(phase == .background)") { await follow() }
     }
 
     var title: String { agent?.title ?? session?.title ?? "Conversation" }
@@ -151,30 +153,47 @@ struct ChatView: View {
         }
     }
 
-    /// Reloads the transcript when the Mac reports a change, at most every 2.5 s.
+    /// A transcript pushes its new and changed messages while the chat is open.
+    /// A dashboard agent's own messages arrive live; its history is fixed.
     func follow() async {
-        guard let path = transcript, let api = model.api else {
+        guard let path = transcript, let api = model.api, phase != .background else {
             loading = false
             return
         }
-        var loadedAt: Double?
-        while !Task.isCancelled {
-            let stamp = session?.updatedAt ?? 0
-            if loadedAt == nil || (session != nil && stamp != loadedAt) {
-                do {
-                    let c: Conversation = try await api.get("api/conversation", ["path": path])
-                    history = c.messages
-                    omitted = c.omitted
-                    loadError = nil
-                } catch {
-                    if !Task.isCancelled { loadError = error.localizedDescription }
-                }
-                loading = false
-                loadedAt = stamp
-                // A dashboard agent's own messages arrive live; its history is fixed.
-                if session == nil { return }
+        guard case .session = current else {
+            do {
+                let c: Conversation = try await api.get("api/conversation", ["path": path])
+                history = c.messages
+                omitted = c.omitted
+                loadError = nil
+            } catch {
+                if !Task.isCancelled { loadError = error.localizedDescription }
             }
-            try? await Task.sleep(for: .seconds(2.5))
+            loading = false
+            return
+        }
+        var delay = 0.5
+        while !Task.isCancelled {
+            do {
+                for try await event in api.chatEvents(path) {
+                    switch event {
+                    case .chat(let c):
+                        history = c.messages
+                        omitted = c.omitted
+                    case .delta(let c):
+                        history = Conversation.merge(history, c.messages)
+                        omitted = c.omitted
+                    }
+                    loadError = nil
+                    loading = false
+                    delay = 0.5
+                }
+            } catch {
+                if !Task.isCancelled { loadError = error.localizedDescription }
+            }
+            loading = false
+            try? await Task.sleep(for: .seconds(delay))
+            delay = min(delay * 2, 10)
         }
     }
 
@@ -216,7 +235,9 @@ struct ChatView: View {
         case .message(let m) where m.role == "note":
             NoteRow(text: m.text)
         case .message(let m):
+            // Equal rows skip their body, so a new message does not re-render the others' Markdown.
             Bubble(message: m, user: m.role == "user", label: model.label(agent?.profile ?? session?.profile ?? ""))
+                .equatable()
         case .note(let text):
             NoteRow(text: text)
         case .typing:

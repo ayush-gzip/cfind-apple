@@ -103,10 +103,41 @@ and repeats until the field is empty.
 - Background behavior: iOS stops the stream when the app leaves the screen; it
   reconnects when it comes back. No push notifications on a free Apple ID.
 
+## Live deltas and chat push (2026-10-28)
+
+What changed:
+- `API.events()` asks for `/api/events?delta=1`. `LiveMerge` turns `metrics-delta`
+  and `workspace-delta` back into whole values: sessions by path (sorted newest first,
+  then by path), agents as plain JSON patched like context-find `dashboard/delta.js`
+  (null = field removed, `append` = streamed text). A delta that only moves the clock
+  does not redraw.
+- An open transcript chat uses `/api/chat-events?path=…` instead of the 2.5 s poll and
+  full reload: `chat` is whole, `chat-delta` is merged by id (`Conversation.merge`,
+  newest 400). It reconnects after an error (0.5 s, doubling to 10 s) and stops in the
+  background. Dashboard agents still load their fixed history once.
+- `Bubble` is `Equatable`, so a new message does not re-render the other bubbles.
+
+Tests (`LiveMergeTests`, 4): `cfindTests/Fixtures/deltas.json` holds 15 frames from the
+real encoder (context-find `ts/src/delta.ts` at 3e8ced9): reorder, removed field, new
+and removed sessions, profile limits, a clock-only delta, token append, pending set and
+cleared, tool output, agent added, removed and reordered. Each frame is checked against
+the snapshot the Mac had. Also a chat-delta merge test and a token append test.
+
+| platform | result |
+| --- | --- |
+| iPhone 17 Pro simulator | 40 tests, 0 failures |
+| macOS | 24 tests, 0 failures |
+
+To regenerate the fixture after a change to `delta.ts` (uses the encoder directly, no build):
+`node tools/delta-fixture.ts <context-find>/ts/src/delta.ts cfindTests/Fixtures/deltas.json`
+
+Not tested yet: the chat stream against the real daemon from the simulator or the
+phone, reconnect after a daemon restart, and the delta stream over Tailscale.
+
 ## Known limits
 
-- The whole metrics snapshot is sent on every change, as for the browser. Over a
-  phone link this is the main data cost.
+- The first metrics event is the whole snapshot (about 500 KB); after that only
+  changes are sent.
 - Pairing over plain `http://` only works on the simulator (`NSAllowsLocalNetworking`).
   A phone needs the Tailscale HTTPS address.
 

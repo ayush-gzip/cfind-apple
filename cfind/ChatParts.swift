@@ -1,7 +1,7 @@
 #if os(iOS)
 import SwiftUI
 
-struct Bubble: View {
+struct Bubble: View, Equatable {
     let message: Message
     let user: Bool
     let label: String

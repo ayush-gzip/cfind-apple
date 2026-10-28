@@ -1,0 +1,1227 @@
+{
+ "frames": [
+  {
+   "event": "metrics",
+   "data": {
+    "updatedAt": 1,
+    "collecting": false,
+    "profiles": [
+     {
+      "id": "claude",
+      "label": "Claude",
+      "source": "claude",
+      "path": "/x",
+      "tokens": {
+       "input": 5
+      }
+     },
+     {
+      "id": "personal",
+      "label": "Personal",
+      "source": "claude",
+      "path": "/y",
+      "tokens": {
+       "input": 2
+      }
+     }
+    ],
+    "sessions": [
+     {
+      "id": "s1",
+      "profile": "claude",
+      "source": "claude",
+      "path": "/home/u/.claude/projects/p/s1.jsonl",
+      "cwd": "/work/p",
+      "title": "Task s1",
+      "updatedAt": 100,
+      "state": "idle",
+      "tokens": {
+       "input": 1
+      },
+      "open": true,
+      "tmux": true
+     },
+     {
+      "id": "s2",
+      "profile": "claude",
+      "source": "claude",
+      "path": "/home/u/.claude/projects/p/s2.jsonl",
+      "cwd": "/work/p",
+      "title": "Task s2",
+      "updatedAt": 90,
+      "state": "idle",
+      "tokens": {
+       "input": 1
+      },
+      "parent": "s1"
+     },
+     {
+      "id": "s3",
+      "profile": "claude",
+      "source": "claude",
+      "path": "/home/u/.claude/projects/p/s3.jsonl",
+      "cwd": "/work/p",
+      "title": "Task s3",
+      "updatedAt": 80,
+      "state": "idle",
+      "tokens": {
+       "input": 1
+      }
+     }
+    ],
+    "days": [],
+    "models": [],
+    "usage": [],
+    "activity": [],
+    "costs": [],
+    "errors": []
+   },
+   "expect": {
+    "updatedAt": 1,
+    "collecting": false,
+    "profiles": [
+     {
+      "id": "claude",
+      "label": "Claude",
+      "source": "claude",
+      "path": "/x",
+      "tokens": {
+       "input": 5
+      }
+     },
+     {
+      "id": "personal",
+      "label": "Personal",
+      "source": "claude",
+      "path": "/y",
+      "tokens": {
+       "input": 2
+      }
+     }
+    ],
+    "sessions": [
+     {
+      "id": "s1",
+      "profile": "claude",
+      "source": "claude",
+      "path": "/home/u/.claude/projects/p/s1.jsonl",
+      "cwd": "/work/p",
+      "title": "Task s1",
+      "updatedAt": 100,
+      "state": "idle",
+      "tokens": {
+       "input": 1
+      },
+      "open": true,
+      "tmux": true
+     },
+     {
+      "id": "s2",
+      "profile": "claude",
+      "source": "claude",
+      "path": "/home/u/.claude/projects/p/s2.jsonl",
+      "cwd": "/work/p",
+      "title": "Task s2",
+      "updatedAt": 90,
+      "state": "idle",
+      "tokens": {
+       "input": 1
+      },
+      "parent": "s1"
+     },
+     {
+      "id": "s3",
+      "profile": "claude",
+      "source": "claude",
+      "path": "/home/u/.claude/projects/p/s3.jsonl",
+      "cwd": "/work/p",
+      "title": "Task s3",
+      "updatedAt": 80,
+      "state": "idle",
+      "tokens": {
+       "input": 1
+      }
+     }
+    ],
+    "days": [],
+    "models": [],
+    "usage": [],
+    "activity": [],
+    "costs": [],
+    "errors": []
+   }
+  },
+  {
+   "event": "workspace",
+   "data": {
+    "agents": [
+     {
+      "id": "a1",
+      "profile": "claude",
+      "cwd": "/work/p",
+      "title": "Fix bug",
+      "state": "running",
+      "startedAt": 10,
+      "updatedAt": 11,
+      "messages": [
+       {
+        "id": "m1",
+        "role": "user",
+        "text": "fix it",
+        "time": 1000
+       },
+       {
+        "id": "m2",
+        "role": "assistant",
+        "text": "Hel",
+        "time": 1000
+       }
+      ],
+      "queue": [],
+      "children": []
+     }
+    ],
+    "logins": []
+   },
+   "expect": {
+    "agents": [
+     {
+      "id": "a1",
+      "profile": "claude",
+      "cwd": "/work/p",
+      "title": "Fix bug",
+      "state": "running",
+      "startedAt": 10,
+      "updatedAt": 11,
+      "messages": [
+       {
+        "id": "m1",
+        "role": "user",
+        "text": "fix it",
+        "time": 1000
+       },
+       {
+        "id": "m2",
+        "role": "assistant",
+        "text": "Hel",
+        "time": 1000
+       }
+      ],
+      "queue": [],
+      "children": []
+     }
+    ],
+    "logins": []
+   }
+  },
+  {
+   "event": "metrics-delta",
+   "data": {
+    "set": {
+     "updatedAt": 2
+    }
+   },
+   "expect": {
+    "updatedAt": 2,
+    "collecting": false,
+    "profiles": [
+     {
+      "id": "claude",
+      "label": "Claude",
+      "source": "claude",
+      "path": "/x",
+      "tokens": {
+       "input": 5
+      }
+     },
+     {
+      "id": "personal",
+      "label": "Personal",
+      "source": "claude",
+      "path": "/y",
+      "tokens": {
+       "input": 2
+      }
+     }
+    ],
+    "sessions": [
+     {
+      "id": "s1",
+      "profile": "claude",
+      "source": "claude",
+      "path": "/home/u/.claude/projects/p/s1.jsonl",
+      "cwd": "/work/p",
+      "title": "Task s1",
+      "updatedAt": 100,
+      "state": "idle",
+      "tokens": {
+       "input": 1
+      },
+      "open": true,
+      "tmux": true
+     },
+     {
+      "id": "s2",
+      "profile": "claude",
+      "source": "claude",
+      "path": "/home/u/.claude/projects/p/s2.jsonl",
+      "cwd": "/work/p",
+      "title": "Task s2",
+      "updatedAt": 90,
+      "state": "idle",
+      "tokens": {
+       "input": 1
+      },
+      "parent": "s1"
+     },
+     {
+      "id": "s3",
+      "profile": "claude",
+      "source": "claude",
+      "path": "/home/u/.claude/projects/p/s3.jsonl",
+      "cwd": "/work/p",
+      "title": "Task s3",
+      "updatedAt": 80,
+      "state": "idle",
+      "tokens": {
+       "input": 1
+      }
+     }
+    ],
+    "days": [],
+    "models": [],
+    "usage": [],
+    "activity": [],
+    "costs": [],
+    "errors": []
+   },
+   "quiet": true
+  },
+  {
+   "event": "metrics-delta",
+   "data": {
+    "set": {
+     "updatedAt": 3
+    },
+    "lists": {
+     "sessions": {
+      "upsert": [
+       {
+        "id": "s3",
+        "profile": "claude",
+        "source": "claude",
+        "path": "/home/u/.claude/projects/p/s3.jsonl",
+        "cwd": "/work/p",
+        "title": "Task s3",
+        "updatedAt": 120,
+        "state": "running",
+        "tokens": {
+         "input": 1
+        }
+       },
+       {
+        "id": "s1",
+        "profile": "claude",
+        "source": "claude",
+        "path": "/home/u/.claude/projects/p/s1.jsonl",
+        "cwd": "/work/p",
+        "title": "Task s1",
+        "updatedAt": 100,
+        "state": "idle",
+        "tokens": {
+         "input": 1
+        },
+        "tmux": true
+       }
+      ]
+     }
+    }
+   },
+   "expect": {
+    "updatedAt": 3,
+    "collecting": false,
+    "profiles": [
+     {
+      "id": "claude",
+      "label": "Claude",
+      "source": "claude",
+      "path": "/x",
+      "tokens": {
+       "input": 5
+      }
+     },
+     {
+      "id": "personal",
+      "label": "Personal",
+      "source": "claude",
+      "path": "/y",
+      "tokens": {
+       "input": 2
+      }
+     }
+    ],
+    "sessions": [
+     {
+      "id": "s3",
+      "profile": "claude",
+      "source": "claude",
+      "path": "/home/u/.claude/projects/p/s3.jsonl",
+      "cwd": "/work/p",
+      "title": "Task s3",
+      "updatedAt": 120,
+      "state": "running",
+      "tokens": {
+       "input": 1
+      }
+     },
+     {
+      "id": "s1",
+      "profile": "claude",
+      "source": "claude",
+      "path": "/home/u/.claude/projects/p/s1.jsonl",
+      "cwd": "/work/p",
+      "title": "Task s1",
+      "updatedAt": 100,
+      "state": "idle",
+      "tokens": {
+       "input": 1
+      },
+      "tmux": true
+     },
+     {
+      "id": "s2",
+      "profile": "claude",
+      "source": "claude",
+      "path": "/home/u/.claude/projects/p/s2.jsonl",
+      "cwd": "/work/p",
+      "title": "Task s2",
+      "updatedAt": 90,
+      "state": "idle",
+      "tokens": {
+       "input": 1
+      },
+      "parent": "s1"
+     }
+    ],
+    "days": [],
+    "models": [],
+    "usage": [],
+    "activity": [],
+    "costs": [],
+    "errors": []
+   },
+   "quiet": false
+  },
+  {
+   "event": "metrics-delta",
+   "data": {
+    "set": {
+     "updatedAt": 4
+    },
+    "lists": {
+     "sessions": {
+      "upsert": [
+       {
+        "id": "s4",
+        "profile": "claude",
+        "source": "claude",
+        "path": "/home/u/.claude/projects/p/s4.jsonl",
+        "cwd": "/work/p",
+        "title": "Task s4",
+        "updatedAt": 120,
+        "state": "idle",
+        "tokens": {
+         "input": 1
+        }
+       }
+      ],
+      "removed": [
+       "/home/u/.claude/projects/p/s2.jsonl"
+      ]
+     }
+    }
+   },
+   "expect": {
+    "updatedAt": 4,
+    "collecting": false,
+    "profiles": [
+     {
+      "id": "claude",
+      "label": "Claude",
+      "source": "claude",
+      "path": "/x",
+      "tokens": {
+       "input": 5
+      }
+     },
+     {
+      "id": "personal",
+      "label": "Personal",
+      "source": "claude",
+      "path": "/y",
+      "tokens": {
+       "input": 2
+      }
+     }
+    ],
+    "sessions": [
+     {
+      "id": "s3",
+      "profile": "claude",
+      "source": "claude",
+      "path": "/home/u/.claude/projects/p/s3.jsonl",
+      "cwd": "/work/p",
+      "title": "Task s3",
+      "updatedAt": 120,
+      "state": "running",
+      "tokens": {
+       "input": 1
+      }
+     },
+     {
+      "id": "s4",
+      "profile": "claude",
+      "source": "claude",
+      "path": "/home/u/.claude/projects/p/s4.jsonl",
+      "cwd": "/work/p",
+      "title": "Task s4",
+      "updatedAt": 120,
+      "state": "idle",
+      "tokens": {
+       "input": 1
+      }
+     },
+     {
+      "id": "s1",
+      "profile": "claude",
+      "source": "claude",
+      "path": "/home/u/.claude/projects/p/s1.jsonl",
+      "cwd": "/work/p",
+      "title": "Task s1",
+      "updatedAt": 100,
+      "state": "idle",
+      "tokens": {
+       "input": 1
+      },
+      "tmux": true
+     }
+    ],
+    "days": [],
+    "models": [],
+    "usage": [],
+    "activity": [],
+    "costs": [],
+    "errors": []
+   },
+   "quiet": false
+  },
+  {
+   "event": "metrics-delta",
+   "data": {
+    "set": {
+     "updatedAt": 5,
+     "profiles": [
+      {
+       "id": "claude",
+       "label": "Claude",
+       "source": "claude",
+       "path": "/x",
+       "tokens": {
+        "input": 5
+       },
+       "limits": {
+        "plan": "max",
+        "session": {
+         "used": 42.5,
+         "resetsAt": 1900000000
+        }
+       }
+      },
+      {
+       "id": "personal",
+       "label": "Personal",
+       "source": "claude",
+       "path": "/y",
+       "tokens": {
+        "input": 2
+       }
+      }
+     ]
+    }
+   },
+   "expect": {
+    "updatedAt": 5,
+    "collecting": false,
+    "profiles": [
+     {
+      "id": "claude",
+      "label": "Claude",
+      "source": "claude",
+      "path": "/x",
+      "tokens": {
+       "input": 5
+      },
+      "limits": {
+       "plan": "max",
+       "session": {
+        "used": 42.5,
+        "resetsAt": 1900000000
+       }
+      }
+     },
+     {
+      "id": "personal",
+      "label": "Personal",
+      "source": "claude",
+      "path": "/y",
+      "tokens": {
+       "input": 2
+      }
+     }
+    ],
+    "sessions": [
+     {
+      "id": "s3",
+      "profile": "claude",
+      "source": "claude",
+      "path": "/home/u/.claude/projects/p/s3.jsonl",
+      "cwd": "/work/p",
+      "title": "Task s3",
+      "updatedAt": 120,
+      "state": "running",
+      "tokens": {
+       "input": 1
+      }
+     },
+     {
+      "id": "s4",
+      "profile": "claude",
+      "source": "claude",
+      "path": "/home/u/.claude/projects/p/s4.jsonl",
+      "cwd": "/work/p",
+      "title": "Task s4",
+      "updatedAt": 120,
+      "state": "idle",
+      "tokens": {
+       "input": 1
+      }
+     },
+     {
+      "id": "s1",
+      "profile": "claude",
+      "source": "claude",
+      "path": "/home/u/.claude/projects/p/s1.jsonl",
+      "cwd": "/work/p",
+      "title": "Task s1",
+      "updatedAt": 100,
+      "state": "idle",
+      "tokens": {
+       "input": 1
+      },
+      "tmux": true
+     }
+    ],
+    "days": [],
+    "models": [],
+    "usage": [],
+    "activity": [],
+    "costs": [],
+    "errors": []
+   },
+   "quiet": false
+  },
+  {
+   "event": "metrics-delta",
+   "data": {
+    "set": {
+     "updatedAt": 6
+    },
+    "lists": {
+     "sessions": {
+      "removed": [
+       "/home/u/.claude/projects/p/s3.jsonl",
+       "/home/u/.claude/projects/p/s4.jsonl",
+       "/home/u/.claude/projects/p/s1.jsonl"
+      ]
+     }
+    }
+   },
+   "expect": {
+    "updatedAt": 6,
+    "collecting": false,
+    "profiles": [
+     {
+      "id": "claude",
+      "label": "Claude",
+      "source": "claude",
+      "path": "/x",
+      "tokens": {
+       "input": 5
+      },
+      "limits": {
+       "plan": "max",
+       "session": {
+        "used": 42.5,
+        "resetsAt": 1900000000
+       }
+      }
+     },
+     {
+      "id": "personal",
+      "label": "Personal",
+      "source": "claude",
+      "path": "/y",
+      "tokens": {
+       "input": 2
+      }
+     }
+    ],
+    "sessions": [],
+    "days": [],
+    "models": [],
+    "usage": [],
+    "activity": [],
+    "costs": [],
+    "errors": []
+   },
+   "quiet": false
+  },
+  {
+   "event": "workspace-delta",
+   "data": {
+    "lists": {
+     "agents": {
+      "upsert": [
+       {
+        "id": "a1",
+        "updatedAt": 12,
+        "messages": {
+         "append": [
+          [
+           "m2",
+           "lo 🙂"
+          ]
+         ]
+        }
+       }
+      ]
+     }
+    }
+   },
+   "expect": {
+    "agents": [
+     {
+      "id": "a1",
+      "profile": "claude",
+      "cwd": "/work/p",
+      "title": "Fix bug",
+      "state": "running",
+      "startedAt": 10,
+      "updatedAt": 12,
+      "messages": [
+       {
+        "id": "m1",
+        "role": "user",
+        "text": "fix it",
+        "time": 1000
+       },
+       {
+        "id": "m2",
+        "role": "assistant",
+        "text": "Hello 🙂",
+        "time": 1000
+       }
+      ],
+      "queue": [],
+      "children": []
+     }
+    ],
+    "logins": []
+   },
+   "quiet": false
+  },
+  {
+   "event": "workspace-delta",
+   "data": {
+    "lists": {
+     "agents": {
+      "upsert": [
+       {
+        "id": "a1",
+        "state": "waiting",
+        "pending": {
+         "id": 7,
+         "method": "can_use_tool",
+         "params": {
+          "tool_name": "Write"
+         }
+        }
+       }
+      ]
+     }
+    }
+   },
+   "expect": {
+    "agents": [
+     {
+      "id": "a1",
+      "profile": "claude",
+      "cwd": "/work/p",
+      "title": "Fix bug",
+      "state": "waiting",
+      "startedAt": 10,
+      "updatedAt": 12,
+      "messages": [
+       {
+        "id": "m1",
+        "role": "user",
+        "text": "fix it",
+        "time": 1000
+       },
+       {
+        "id": "m2",
+        "role": "assistant",
+        "text": "Hello 🙂",
+        "time": 1000
+       }
+      ],
+      "queue": [],
+      "children": [],
+      "pending": {
+       "id": 7,
+       "method": "can_use_tool",
+       "params": {
+        "tool_name": "Write"
+       }
+      }
+     }
+    ],
+    "logins": []
+   },
+   "quiet": false
+  },
+  {
+   "event": "workspace-delta",
+   "data": {
+    "lists": {
+     "agents": {
+      "upsert": [
+       {
+        "id": "a1",
+        "state": "running",
+        "pending": null,
+        "messages": {
+         "upsert": [
+          {
+           "id": "m3",
+           "role": "tool",
+           "text": "ls",
+           "time": 1000,
+           "tool": {
+            "name": "Bash",
+            "input": "ls"
+           }
+          }
+         ]
+        }
+       }
+      ]
+     }
+    }
+   },
+   "expect": {
+    "agents": [
+     {
+      "id": "a1",
+      "profile": "claude",
+      "cwd": "/work/p",
+      "title": "Fix bug",
+      "state": "running",
+      "startedAt": 10,
+      "updatedAt": 12,
+      "messages": [
+       {
+        "id": "m1",
+        "role": "user",
+        "text": "fix it",
+        "time": 1000
+       },
+       {
+        "id": "m2",
+        "role": "assistant",
+        "text": "Hello 🙂",
+        "time": 1000
+       },
+       {
+        "id": "m3",
+        "role": "tool",
+        "text": "ls",
+        "time": 1000,
+        "tool": {
+         "name": "Bash",
+         "input": "ls"
+        }
+       }
+      ],
+      "queue": [],
+      "children": []
+     }
+    ],
+    "logins": []
+   },
+   "quiet": false
+  },
+  {
+   "event": "workspace-delta",
+   "data": {
+    "lists": {
+     "agents": {
+      "upsert": [
+       {
+        "id": "a1",
+        "messages": {
+         "upsert": [
+          {
+           "id": "m3",
+           "role": "tool",
+           "text": "ls",
+           "time": 1000,
+           "tool": {
+            "name": "Bash",
+            "input": "ls",
+            "output": "a\nb"
+           }
+          }
+         ]
+        }
+       }
+      ]
+     }
+    }
+   },
+   "expect": {
+    "agents": [
+     {
+      "id": "a1",
+      "profile": "claude",
+      "cwd": "/work/p",
+      "title": "Fix bug",
+      "state": "running",
+      "startedAt": 10,
+      "updatedAt": 12,
+      "messages": [
+       {
+        "id": "m1",
+        "role": "user",
+        "text": "fix it",
+        "time": 1000
+       },
+       {
+        "id": "m2",
+        "role": "assistant",
+        "text": "Hello 🙂",
+        "time": 1000
+       },
+       {
+        "id": "m3",
+        "role": "tool",
+        "text": "ls",
+        "time": 1000,
+        "tool": {
+         "name": "Bash",
+         "input": "ls",
+         "output": "a\nb"
+        }
+       }
+      ],
+      "queue": [],
+      "children": []
+     }
+    ],
+    "logins": []
+   },
+   "quiet": false
+  },
+  {
+   "event": "workspace-delta",
+   "data": {
+    "lists": {
+     "agents": {
+      "upsert": [
+       {
+        "id": "a2",
+        "profile": "personal",
+        "cwd": "/w",
+        "title": "New",
+        "state": "queued",
+        "startedAt": 20,
+        "updatedAt": 20,
+        "messages": [],
+        "queue": [],
+        "children": []
+       }
+      ],
+      "order": [
+       "a2",
+       "a1"
+      ]
+     }
+    }
+   },
+   "expect": {
+    "agents": [
+     {
+      "id": "a2",
+      "profile": "personal",
+      "cwd": "/w",
+      "title": "New",
+      "state": "queued",
+      "startedAt": 20,
+      "updatedAt": 20,
+      "messages": [],
+      "queue": [],
+      "children": []
+     },
+     {
+      "id": "a1",
+      "profile": "claude",
+      "cwd": "/work/p",
+      "title": "Fix bug",
+      "state": "running",
+      "startedAt": 10,
+      "updatedAt": 12,
+      "messages": [
+       {
+        "id": "m1",
+        "role": "user",
+        "text": "fix it",
+        "time": 1000
+       },
+       {
+        "id": "m2",
+        "role": "assistant",
+        "text": "Hello 🙂",
+        "time": 1000
+       },
+       {
+        "id": "m3",
+        "role": "tool",
+        "text": "ls",
+        "time": 1000,
+        "tool": {
+         "name": "Bash",
+         "input": "ls",
+         "output": "a\nb"
+        }
+       }
+      ],
+      "queue": [],
+      "children": []
+     }
+    ],
+    "logins": []
+   },
+   "quiet": false
+  },
+  {
+   "event": "workspace-delta",
+   "data": {
+    "lists": {
+     "agents": {
+      "upsert": [
+       {
+        "id": "a1",
+        "error": "Exited",
+        "messages": {
+         "removed": [
+          "m1"
+         ]
+        }
+       }
+      ]
+     }
+    }
+   },
+   "expect": {
+    "agents": [
+     {
+      "id": "a2",
+      "profile": "personal",
+      "cwd": "/w",
+      "title": "New",
+      "state": "queued",
+      "startedAt": 20,
+      "updatedAt": 20,
+      "messages": [],
+      "queue": [],
+      "children": []
+     },
+     {
+      "id": "a1",
+      "profile": "claude",
+      "cwd": "/work/p",
+      "title": "Fix bug",
+      "state": "running",
+      "startedAt": 10,
+      "updatedAt": 12,
+      "messages": [
+       {
+        "id": "m2",
+        "role": "assistant",
+        "text": "Hello 🙂",
+        "time": 1000
+       },
+       {
+        "id": "m3",
+        "role": "tool",
+        "text": "ls",
+        "time": 1000,
+        "tool": {
+         "name": "Bash",
+         "input": "ls",
+         "output": "a\nb"
+        }
+       }
+      ],
+      "queue": [],
+      "children": [],
+      "error": "Exited"
+     }
+    ],
+    "logins": []
+   },
+   "quiet": false
+  },
+  {
+   "event": "workspace-delta",
+   "data": {
+    "lists": {
+     "agents": {
+      "upsert": [
+       {
+        "id": "a1",
+        "queue": [
+         {
+          "text": "then test"
+         }
+        ],
+        "messages": {
+         "append": [
+          [
+           "m2",
+           " more"
+          ]
+         ]
+        }
+       }
+      ],
+      "removed": [
+       "a2"
+      ],
+      "order": [
+       "a1"
+      ]
+     }
+    }
+   },
+   "expect": {
+    "agents": [
+     {
+      "id": "a1",
+      "profile": "claude",
+      "cwd": "/work/p",
+      "title": "Fix bug",
+      "state": "running",
+      "startedAt": 10,
+      "updatedAt": 12,
+      "messages": [
+       {
+        "id": "m2",
+        "role": "assistant",
+        "text": "Hello 🙂 more",
+        "time": 1000
+       },
+       {
+        "id": "m3",
+        "role": "tool",
+        "text": "ls",
+        "time": 1000,
+        "tool": {
+         "name": "Bash",
+         "input": "ls",
+         "output": "a\nb"
+        }
+       }
+      ],
+      "queue": [
+       {
+        "text": "then test"
+       }
+      ],
+      "children": [],
+      "error": "Exited"
+     }
+    ],
+    "logins": []
+   },
+   "quiet": false
+  },
+  {
+   "event": "workspace-delta",
+   "data": {
+    "lists": {
+     "agents": {
+      "upsert": [
+       {
+        "id": "a1",
+        "model": "sonnet",
+        "error": null
+       }
+      ]
+     }
+    }
+   },
+   "expect": {
+    "agents": [
+     {
+      "id": "a1",
+      "profile": "claude",
+      "cwd": "/work/p",
+      "title": "Fix bug",
+      "state": "running",
+      "startedAt": 10,
+      "updatedAt": 12,
+      "messages": [
+       {
+        "id": "m2",
+        "role": "assistant",
+        "text": "Hello 🙂 more",
+        "time": 1000
+       },
+       {
+        "id": "m3",
+        "role": "tool",
+        "text": "ls",
+        "time": 1000,
+        "tool": {
+         "name": "Bash",
+         "input": "ls",
+         "output": "a\nb"
+        }
+       }
+      ],
+      "queue": [
+       {
+        "text": "then test"
+       }
+      ],
+      "children": [],
+      "model": "sonnet"
+     }
+    ],
+    "logins": []
+   },
+   "quiet": false
+  }
+ ]
+}
