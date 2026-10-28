@@ -209,6 +209,34 @@ De-dup: the "asked you" note reuses the id of the "replied" or "finished" note o
 turn, so macOS replaces the banner. In the same diff only the ask note is sent. If the
 ask arrives a poll later and `updatedAt` has changed, the ids differ and two banners can show.
 
+## Phone notifications through Bark (2026-10-28)
+
+iOS stops the app in the background and free signing has no push, so the Mac app
+forwards its notes to the Bark app (`cfind/PhonePush.swift`) while you are away from
+the Mac: no input for 2 minutes, or the screen is locked. While away, the chat on the
+Mac screen does not count as read. The text is sealed with AES-GCM (key 16/24/32
+characters; Bark settings AES256, GCM, noPadding), with a fresh 12-character IV per push
+in the `iv` field, which overrides the IV saved in Bark (Bark's CiphertextProcessor). The
+POST body has only `ciphertext` (ciphertext then the 16-byte tag, base64, as CryptoSwift's
+GCM combined mode wants) and `iv`. A tap opens `cfind://open?agent=ID` or
+`?session=PATH`; the iPhone app shows that chat in the Agents tab. Setup: cfind > Settings
+(⌘,) on the Mac, with the Bark URL, the key and Send test.
+
+| case | result |
+| --- | --- |
+| link round trip: agent id; session path with spaces, `&`, `?`, `+`, `#`, non-ASCII | Pass (unit) |
+| pairing links still pair; `cfind://open` without a value or with another name is not a chat | Pass (unit) |
+| request: POST, form body with only `ciphertext` and `iv`, no raw `+`; CryptoKit opens it to title, body, url, group | Pass (unit, macOS) |
+| bad URL, key not 16/24/32 ASCII characters: error | Pass (unit, macOS) |
+| 100 IVs all different, 12 ASCII characters | Pass (unit, macOS) |
+| the real `PhonePush.post` against a fake Bark server in node: node's own `aes-256-gcm` decrypts it; a 400 answer, a closed port and a bad key give the status text | Pass (swiftc CLI from the app sources) |
+| UI: `testOpenLinkShowsChat` on the harness: after pairing, `open(cfind://open?agent=ID)` relaunches the app (cold start) and shows that chat in the Agents tab | Pass |
+
+Unit tests: 46 on iOS, 33 on macOS. The UI test clears `-cfind-reset` before
+`open(_:)`, because `open` launches the app again with its arguments. Not tested here:
+a real push through Bark's server to a phone (needs the user's Bark key), and the away
+check (system state).
+
 ## Known limits
 
 - The first metrics event is the whole snapshot (about 500 KB); after that only

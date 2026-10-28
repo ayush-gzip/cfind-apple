@@ -118,6 +118,20 @@ final class CfindUITests: XCTestCase {
         shot(app, "c2-typed")
     }
 
+    /// Needs tools/phone-harness.mjs and CFIND_AGENT (its agent id): a phone
+    /// notification's link opens that chat in the Agents tab.
+    func testOpenLinkShowsChat() throws {
+        let app = try pairedApp()
+        let id = try XCTUnwrap(env["CFIND_AGENT"])
+        // open(_:) launches the app again with its arguments; -cfind-reset would unpair it.
+        app.launchArguments = []
+        app.open(URL(string: "cfind://open?agent=\(id)")!)
+        XCTAssertTrue(app.descendants(matching: .any)["composer"].waitForExistence(timeout: 10), "the chat did not open")
+        XCTAssertTrue(app.tabBars.buttons["Agents"].isSelected)
+        XCTAssertTrue(exact(app, "slow task").exists)
+        shot(app, "o1-open-link")
+    }
+
     /// Needs tools/phone-harness.mjs (a scratch daemon): a dashboard agent working
     /// on "slow task", and a tmux session "Terminal test" waiting on a menu.
     func testSendNowStopAndTerminalView() throws {

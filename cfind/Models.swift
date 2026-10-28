@@ -224,3 +224,29 @@ enum ChatTarget: Hashable {
     /// A transcript, by path.
     case session(String)
 }
+
+extension ChatTarget {
+    /// `cfind://open?agent=ID` or `cfind://open?session=PATH`, opened by tapping a phone notification.
+    var link: URL {
+        var c = URLComponents()
+        c.scheme = "cfind"
+        c.host = "open"
+        c.queryItems = switch self {
+        case .agent(let id): [URLQueryItem(name: "agent", value: id)]
+        case .session(let path): [URLQueryItem(name: "session", value: path)]
+        }
+        return c.url!
+    }
+
+    init?(link url: URL) {
+        guard url.scheme == "cfind", url.host() == "open",
+              let item = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first,
+              let value = item.value, !value.isEmpty
+        else { return nil }
+        switch item.name {
+        case "agent": self = .agent(value)
+        case "session": self = .session(value)
+        default: return nil
+        }
+    }
+}

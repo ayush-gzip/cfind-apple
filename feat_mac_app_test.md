@@ -124,6 +124,14 @@ page is transparent (its sidebar).
 The page did not paint in M17: windows opened on a Space that was not on screen,
 so WebKit skipped drawing. Check the glass and the page together after install.
 
+## Phone push settings (2026-10-28)
+
+cfind > Settings (⌘,): Bark URL, encryption key, Last push, Send test. Notifier sends each
+note to Bark too while you are away (2 minutes idle or screen locked), and then also shows
+the Mac banner for the chat on screen. Checked with the real `PhonePush.post` against a fake
+Bark server (see the iPhone file). The Settings window itself was not opened in a test:
+the user's app was running.
+
 ## Not tested yet
 
 - Window drag and double-click from the page's top row (needs the page side), and the

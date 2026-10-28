@@ -19,14 +19,16 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
 
     /// Call after every change to agents or sessions, and when the chat on screen changes.
     func update(model: AppModel, viewing: ChatTarget?) {
-        self.viewing = viewing
+        // Away from the Mac, nobody reads the chat on its screen; the phone gets the notes too.
+        let away = PhonePush.away
+        self.viewing = away ? nil : viewing
         let sessions = (model.snapshot?.sessions ?? []).filter {
             $0.parent == nil && $0.open == true && model.agent(for: $0) == nil
         }
         // Until the first snapshot arrives there is nothing to compare against.
         guard model.snapshot != nil else { return }
         let new = NotifyState(agents: model.agents, sessions: sessions)
-        let found = notes(old: last, new: new, viewing: viewing.map(NotifyTarget.init), agentName: model.agentName)
+        let found = notes(old: last, new: new, viewing: self.viewing.map(NotifyTarget.init), agentName: model.agentName)
         last = new
         for n in found {
             let content = UNMutableNotificationContent()
@@ -42,6 +44,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
                 content.userInfo = ["kind": "session", "id": path]
             }
             UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: n.id, content: content, trigger: nil))
+            if away { PhonePush.send(n) }
         }
     }
 

@@ -26,7 +26,10 @@ struct CfindApp: App {
                 }
             }
             .environment(model)
-            .onOpenURL { url in model.link = PairLink(url) }
+            .onOpenURL { url in
+                // A tap on a phone notification opens a chat; other links pair.
+                if let target = ChatTarget(link: url) { model.open = target } else { model.link = PairLink(url) }
+            }
             .onChange(of: phase) { _, phase in
                 // iOS stops the stream in the background; start it again on return.
                 if phase == .active { model.connect() } else if phase == .background { model.disconnect() }
@@ -58,18 +61,30 @@ struct CfindApp: App {
                     .keyboardShortcut("f", modifiers: [.command, .option])
             }
         }
+        Settings { PhonePushSettings() }
         #endif
     }
 }
 
 #if os(iOS)
 struct RootView: View {
+    @Environment(AppModel.self) private var model
+    @State private var tab = 0
+    @State private var agentsPath: [ChatTarget] = []
+
     var body: some View {
-        TabView {
-            SessionsView().tabItem { Label("Sessions", systemImage: "bubble.left.and.bubble.right") }
-            AgentsView().tabItem { Label("Agents", systemImage: "terminal") }
-            UsageView().tabItem { Label("Usage", systemImage: "gauge.with.dots.needle.33percent") }
-            MacView().tabItem { Label("Mac", systemImage: "laptopcomputer") }
+        TabView(selection: $tab) {
+            SessionsView().tabItem { Label("Sessions", systemImage: "bubble.left.and.bubble.right") }.tag(0)
+            AgentsView(path: $agentsPath).tabItem { Label("Agents", systemImage: "terminal") }.tag(1)
+            UsageView().tabItem { Label("Usage", systemImage: "gauge.with.dots.needle.33percent") }.tag(2)
+            MacView().tabItem { Label("Mac", systemImage: "laptopcomputer") }.tag(3)
+        }
+        // A chat opened from a notification shows in the Agents tab.
+        .onChange(of: model.open, initial: true) { _, target in
+            guard let target else { return }
+            tab = 1
+            agentsPath = [target]
+            model.open = nil
         }
     }
 }

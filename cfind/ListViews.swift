@@ -101,7 +101,7 @@ struct SessionsView: View {
 
 struct AgentsView: View {
     @Environment(AppModel.self) private var model
-    @State private var path: [ChatTarget] = []
+    @Binding var path: [ChatTarget]
     @State private var creating = false
 
     var body: some View {
