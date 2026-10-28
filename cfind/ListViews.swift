@@ -93,7 +93,8 @@ struct SessionsView: View {
 
     func row(_ s: Session) -> some View {
         ChatLink(target: model.agent(for: s).map { ChatTarget.agent($0.id) } ?? .session(s.path)) {
-            RowLabel(title: s.title, state: s.state, profile: s.profile, cwd: s.cwd, updatedAt: s.updatedAt)
+            RowLabel(title: s.title, state: shownState(state: s.state, ask: s.ask), profile: s.profile, cwd: s.cwd,
+                     updatedAt: s.updatedAt)
         }
     }
 }
@@ -156,7 +157,7 @@ struct AgentsView: View {
     static let lanes = ["Needs input", "Running", "Queued", "Idle"]
     static func lane(_ state: String) -> Int {
         switch state {
-        case "waiting": 0
+        case "waiting", "asking": 0
         case "running", "stale": 1
         case "queued": 2
         default: 3
@@ -165,14 +166,14 @@ struct AgentsView: View {
 
     var items: [Item] {
         let owned = model.agents.map {
-            Item(id: .agent($0.id), title: $0.title, state: $0.pending != nil ? "waiting" : $0.state,
+            Item(id: .agent($0.id), title: $0.title, state: $0.pending != nil ? "waiting" : shownState(state: $0.state, ask: $0.ask),
                  profile: $0.profile, cwd: $0.cwd, updatedAt: $0.updatedAt, terminal: false, parent: $0.sid)
         }
         let open = (model.snapshot?.sessions ?? []).filter {
             $0.parent == nil && model.agent(for: $0) == nil
                 && ($0.open == true || ["running", "waiting", "stale"].contains($0.state))
         }.map {
-            Item(id: .session($0.path), title: $0.title, state: $0.state, profile: $0.profile,
+            Item(id: .session($0.path), title: $0.title, state: shownState(state: $0.state, ask: $0.ask), profile: $0.profile,
                  cwd: $0.cwd, updatedAt: $0.updatedAt, terminal: true, parent: $0.id)
         }
         return owned + open

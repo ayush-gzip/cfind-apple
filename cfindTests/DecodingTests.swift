@@ -41,6 +41,13 @@ final class DecodingTests: XCTestCase {
         XCTAssertEqual(a.messages[2].images, ["up1"])
     }
 
+    func testAskIsOptional() throws {
+        XCTAssertNil(makeAgent().ask)
+        XCTAssertNil(makeSession(state: "idle").ask)
+        XCTAssertEqual(makeAgent(ask: "Which one?").ask, "Which one?")
+        XCTAssertEqual(makeSession(state: "idle", ask: "Which one?").ask, "Which one?")
+    }
+
     func testPendingIdMayBeStringOrNumber() throws {
         XCTAssertEqual(try decode(Pending.self, #"{"id":"abc","method":"m"}"#).id.key, "abc")
         XCTAssertEqual(try decode(Pending.self, #"{"id":7,"method":"m"}"#).id.key, "7.0")

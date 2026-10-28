@@ -71,6 +71,45 @@ final class NotifyRulesTests: XCTestCase {
         XCTAssertTrue(run(state(), state([], [makeSession(state: "idle")])).isEmpty)
     }
 
+    func testAgentAskedYou() {
+        let q = "Tea or coffee?"
+        var n = run(state([makeAgent(state: "running")]), state([makeAgent(updatedAt: 7, messages: msgs, ask: q)]))
+        XCTAssertEqual(n.count, 1)
+        XCTAssertEqual(n.first?.title, "Claude asked you")
+        XCTAssertEqual(n.first?.body, q)
+        XCTAssertEqual(n.first?.id, "agent:a1:done:7.0")
+        // Ask appears on a later poll, or changes.
+        n = run(state([makeAgent()]), state([makeAgent(ask: q)]))
+        XCTAssertEqual(n.first?.title, "Claude asked you")
+        n = run(state([makeAgent(ask: "old?")]), state([makeAgent(ask: q)]))
+        XCTAssertEqual(n.first?.body, q)
+        // Same ask, ask cleared, or a pending approval: no ask note.
+        XCTAssertTrue(run(state([makeAgent(ask: q)]), state([makeAgent(updatedAt: 9, ask: q)])).isEmpty)
+        XCTAssertTrue(run(state([makeAgent(ask: q)]), state([makeAgent()])).isEmpty)
+        XCTAssertTrue(run(state([makeAgent()]), state([makeAgent(ask: q)]), viewing: .agent("a1")).isEmpty)
+    }
+
+    func testPendingApprovalBeatsAsk() {
+        let n = run(state([makeAgent(state: "running")]), state([makeAgent(pending: pend, ask: "Why?")]))
+        XCTAssertEqual(n.map(\.title), ["Claude needs your input"])
+    }
+
+    func testSessionAskedYou() {
+        let q = "Tea or coffee?"
+        var n = run(state([], [makeSession(state: "running")]), state([], [makeSession(state: "idle", updatedAt: 4, ask: q)]))
+        XCTAssertEqual(n.count, 1)
+        XCTAssertEqual(n.first?.title, "Claude asked you")
+        XCTAssertEqual(n.first?.body, q)
+        XCTAssertEqual(n.first?.id, "session:/s/1:idle:4.0")
+        // Ask arrives one poll after the state flips to idle.
+        n = run(state([], [makeSession(state: "idle")]), state([], [makeSession(state: "idle", ask: q)]))
+        XCTAssertEqual(n.first?.title, "Claude asked you")
+        XCTAssertEqual(n.first?.target, .session("/s/1"))
+        // Same ask on the next poll, or ask gone: silent.
+        XCTAssertTrue(run(state([], [makeSession(state: "idle", ask: q)]), state([], [makeSession(state: "idle", ask: q)])).isEmpty)
+        XCTAssertTrue(run(state([], [makeSession(state: "idle", ask: q)]), state([], [makeSession(state: "idle")])).isEmpty)
+    }
+
     func testStaleAndUnknownSessionsAreSilent() {
         for s in ["stale", "unknown"] {
             XCTAssertTrue(run(state([], [makeSession(state: "running")]), state([], [makeSession(state: s)])).isEmpty, "running to \(s)")

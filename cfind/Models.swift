@@ -104,6 +104,8 @@ struct Session: Decodable, Hashable {
     var parent: String?
     var updatedAt: Double
     var state: String
+    /// The question the agent ended its turn with. Set only while idle.
+    var ask: String?
     var open: Bool?
     var tmux: Bool?
 }
@@ -153,6 +155,8 @@ struct Agent: Decodable, Identifiable, Hashable {
     /// "auto" runs commands without asking; anything else asks first.
     var permissionMode: String?
     var state: String
+    /// The question the agent ended its turn with. Set only while idle.
+    var ask: String?
     var startedAt: Double
     var updatedAt: Double
     var messages: [Message]
@@ -200,9 +204,15 @@ func age(_ ms: Double) -> String {
     return "\(Int(d / 86400))d"
 }
 
+/// An idle item that asked a question shows as "asking". Only for display and lanes:
+/// it is still idle, so the composer works as usual.
+func shownState(state: String, ask: String?) -> String {
+    ask != nil && state == "idle" ? "asking" : state
+}
+
 func stateLabel(_ s: String) -> String {
     [
-        "idle": "Idle", "running": "Running", "queued": "Queued", "waiting": "Needs input",
+        "idle": "Idle", "running": "Running", "queued": "Queued", "waiting": "Needs input", "asking": "Needs your answer",
         "failed": "Failed", "errored": "Failed", "complete": "Complete", "completed": "Complete",
         "stopped": "Stopped", "stale": "Stale", "unknown": "Unknown",
     ][s] ?? s.capitalized

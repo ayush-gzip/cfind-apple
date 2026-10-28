@@ -132,6 +132,9 @@ so WebKit skipped drawing. Check the glass and the page together after install.
 
 - Clicking a notification to open its chat was not checked by hand.
 - The "cfind is not running" screen: not seen with the daemon stopped.
+- Asking state (2026-10-28): "<Name> asked you" with the question as body, from the
+  `ask` field. Rules covered by `cfindTests` on macOS (29 pass). Not checked as a real
+  banner.
 
 ## Known limits
 

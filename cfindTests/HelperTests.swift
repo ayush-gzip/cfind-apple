@@ -19,9 +19,16 @@ final class HelperTests: XCTestCase {
 
     func testStateLabel() {
         XCTAssertEqual(stateLabel("waiting"), "Needs input")
+        XCTAssertEqual(stateLabel("asking"), "Needs your answer")
         XCTAssertEqual(stateLabel("errored"), "Failed")
         XCTAssertEqual(stateLabel("completed"), "Complete")
         XCTAssertEqual(stateLabel("something"), "Something")
+    }
+
+    func testShownState() {
+        XCTAssertEqual(shownState(state: "idle", ask: "Which one?"), "asking")
+        XCTAssertEqual(shownState(state: "idle", ask: nil), "idle")
+        XCTAssertEqual(shownState(state: "running", ask: "Which one?"), "running")
     }
 
     func testOneLine() {

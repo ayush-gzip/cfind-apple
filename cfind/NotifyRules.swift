@@ -40,6 +40,10 @@ func notes(old: NotifyState?, new: NotifyState, viewing: NotifyTarget?, agentNam
         if was.pending == nil, let p = a.pending {
             out.append(Note(id: "agent:\(id):pending:\(p.id.key)", title: "\(agentName(a.profile)) needs your input",
                             body: oneLine("\(a.title): \(ask(p))"), target: target))
+        } else if a.pending == nil, a.state == "idle", let q = a.ask, running.contains(was.state) || was.ask != q {
+            // Same id as the "replied" note of this turn, so a late ask replaces it.
+            out.append(Note(id: "agent:\(id):done:\(a.updatedAt)", title: "\(agentName(a.profile)) asked you",
+                            body: oneLine(q), target: target))
         } else if running.contains(was.state), finished.contains(a.state), a.pending == nil {
             let reply = a.messages.last { $0.role != "user" && $0.tool == nil && !$0.text.isEmpty }?.text
             out.append(Note(id: "agent:\(id):done:\(a.updatedAt)", title: "\(agentName(a.profile)) replied",
@@ -51,15 +55,25 @@ func notes(old: NotifyState?, new: NotifyState, viewing: NotifyTarget?, agentNam
     }
 
     for (path, s) in new.sessions.sorted(by: { $0.key < $1.key }) {
-        guard let was = old.sessions[path], viewing != .session(path), was.state == "running" else { continue }
+        guard let was = old.sessions[path], viewing != .session(path) else { continue }
         let name = agentName(s.profile)
-        let title: String
-        switch s.state {
-        case "waiting": title = "\(name) needs your input in the terminal"
-        case "idle": title = "\(name) finished"
-        default: continue
+        let title: String, body: String
+        // The ask can show up one poll after the state flips to idle.
+        if s.state == "idle", let q = s.ask, was.state == "running" || was.ask != q {
+            title = "\(name) asked you"
+            body = q
+        } else if was.state == "running" {
+            switch s.state {
+            case "waiting": title = "\(name) needs your input in the terminal"
+            case "idle": title = "\(name) finished"
+            default: continue
+            }
+            body = s.title
+        } else {
+            continue
         }
-        out.append(Note(id: "session:\(path):\(s.state):\(s.updatedAt)", title: title, body: oneLine(s.title),
+        // Same id as the "finished" note of this turn, so a late ask replaces it.
+        out.append(Note(id: "session:\(path):\(s.state):\(s.updatedAt)", title: title, body: oneLine(body),
                         target: .session(path)))
     }
     return out

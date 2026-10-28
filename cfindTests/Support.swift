@@ -13,21 +13,23 @@ func fixture<T: Decodable>(_ type: T.Type, _ name: String) throws -> T {
 private final class FixtureMarker {}
 
 func makeAgent(_ id: String = "a1", state: String = "idle", updatedAt: Double = 1, messages: String = "[]",
-               pending: String = "null", error: String = "null", title: String = "Fix bug") -> Agent {
+               pending: String = "null", error: String = "null", title: String = "Fix bug", ask: String? = nil) -> Agent {
+    let a = ask.map { #","ask":"\#($0)""# } ?? ""
     let json = """
     {"id":"\(id)","profile":"p","cwd":"/x","title":"\(title)","state":"\(state)","startedAt":0,
-     "updatedAt":\(updatedAt),"messages":\(messages),"queue":[],"error":\(error),"pending":\(pending)}
+     "updatedAt":\(updatedAt),"messages":\(messages),"queue":[],"error":\(error),"pending":\(pending)\(a)}
     """
     return try! decode(Agent.self, json)
 }
 
 func makeSession(_ path: String = "/s/1", id: String = "s", profile: String = "p", state: String,
-                 title: String = "Refactor", updatedAt: Double = 1, parent: String? = nil) -> Session {
+                 title: String = "Refactor", updatedAt: Double = 1, parent: String? = nil, ask: String? = nil) -> Session {
+    let a = ask.map { #","ask":"\#($0)""# } ?? ""
     let t = String(data: try! JSONEncoder().encode(title), encoding: .utf8)!
     let p = parent.map { #""\#($0)""# } ?? "null"
     let json = """
     {"id":"\(id)","profile":"\(profile)","source":"claude","path":"\(path)","cwd":"/x","title":\(t),
-     "updatedAt":\(updatedAt),"state":"\(state)","open":true,"parent":\(p)}
+     "updatedAt":\(updatedAt),"state":"\(state)","open":true,"parent":\(p)\(a)}
     """
     return try! decode(Session.self, json)
 }

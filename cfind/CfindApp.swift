@@ -105,7 +105,7 @@ struct StateDot: View {
     var color: Color {
         switch state {
         case "running", "queued": .blue
-        case "waiting": .orange
+        case "waiting", "asking": .orange
         case "failed", "errored": .red
         case "stale": .yellow
         default: Color.dim

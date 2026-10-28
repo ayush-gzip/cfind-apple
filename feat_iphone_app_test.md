@@ -178,6 +178,37 @@ Start a fresh harness for each run (the agent and the menu keep their state).
 Not tested: a real Claude TUI question from the phone (the keys are the ones the website
 uses, probed on Claude 2.1.312); a Codex terminal menu; the real iPhone.
 
+## Asking state (2026-10-28)
+
+The daemon adds an optional `ask` to agents and sessions: set when the turn ended (idle)
+with a question to the user. The app shows it as a derived state, "Needs your answer"
+(orange dot, "Needs input" lane, chat header). The composer still follows the raw state,
+so an asking item keeps a normal idle composer. A pending approval wins over an ask.
+
+```sh
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+xcodebuild test -project cfind.xcodeproj -scheme cfind \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:cfindTests \
+  -derivedDataPath <scratch DerivedData>
+```
+
+| case | result |
+| --- | --- |
+| decoding: `ask` present, and missing (old daemon) | Pass |
+| `shownState`: idle + ask is "asking"; running + ask and idle without ask are unchanged | Pass |
+| `stateLabel("asking")` is "Needs your answer"; lane 0 | Pass |
+| agent running to idle with ask: one "asked you" note, same id as the "replied" note | Pass |
+| agent ask appears or changes while idle: note; same ask next poll, ask cleared, chat in view: none | Pass |
+| agent pending approval and ask together: only "needs your input" | Pass |
+| session running to idle with ask, and ask one poll after idle: "asked you"; repeat or cleared: none | Pass |
+
+Result: 45 tests pass on iOS (was 36), 29 on macOS (was 20). Not tested: the real daemon
+sending `ask`, the list and chat header on screen (no UI test run).
+
+De-dup: the "asked you" note reuses the id of the "replied" or "finished" note of that
+turn, so macOS replaces the banner. In the same diff only the ask note is sent. If the
+ask arrives a poll later and `updatedAt` has changed, the ids differ and two banners can show.
+
 ## Known limits
 
 - The first metrics event is the whole snapshot (about 500 KB); after that only

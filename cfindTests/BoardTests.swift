@@ -6,6 +6,7 @@ final class BoardTests: XCTestCase {
     func testAgentLaneOrder() {
         XCTAssertEqual(AgentsView.lanes.count, 4)
         XCTAssertEqual(AgentsView.lane("waiting"), 0)
+        XCTAssertEqual(AgentsView.lane("asking"), 0)
         XCTAssertEqual(AgentsView.lane("running"), 1)
         XCTAssertEqual(AgentsView.lane("stale"), 1)
         XCTAssertEqual(AgentsView.lane("queued"), 2)

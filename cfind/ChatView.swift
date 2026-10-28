@@ -152,7 +152,10 @@ struct ChatView: View {
 
     var title: String { agent?.title ?? session?.title ?? "Conversation" }
     var profileID: String { agent?.profile ?? session?.profile ?? "" }
-    var state: String { agent.map { $0.pending != nil ? "waiting" : $0.state } ?? session?.state ?? "idle" }
+    var state: String {
+        agent.map { $0.pending != nil ? "waiting" : shownState(state: $0.state, ask: $0.ask) }
+            ?? session.map { shownState(state: $0.state, ask: $0.ask) } ?? "idle"
+    }
 
     @ViewBuilder var menu: some View {
         let c = composerState
