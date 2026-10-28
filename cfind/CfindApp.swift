@@ -43,7 +43,7 @@ struct CfindApp: App {
                 }
         }
         .defaultSize(width: 1280, height: 820)
-        .windowToolbarStyle(.unifiedCompact)
+        .windowStyle(.hiddenTitleBar)
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("New Agent") { WebDashboard.shared.newAgent() }.keyboardShortcut("n")

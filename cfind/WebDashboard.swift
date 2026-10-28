@@ -11,7 +11,7 @@ import WebKit
 final class WebDashboard: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     static let shared = WebDashboard()
 
-    let view: WKWebView
+    let view: DashboardWebView
     /// The daemon did not answer; the window says so and tries again.
     private(set) var down = false
     @ObservationIgnored weak var model: AppModel?
@@ -19,24 +19,99 @@ final class WebDashboard: NSObject, WKNavigationDelegate, WKUIDelegate, WKScript
     /// A chat asked for before the page finished loading.
     @ObservationIgnored private var pending: ChatTarget?
     @ObservationIgnored private var retry: Task<Void, Never>?
+    /// The page's own light or dark choice. The glass must match it, or the
+    /// sidebar text is hard to read.
+    @ObservationIgnored private var appearance: NSAppearance?
+    /// The script that last gave the page its window layout values.
+    @ObservationIgnored private var chrome = ""
+    /// The page's top row in points. The window buttons sit in its middle.
+    private static let bar = 52.0
 
     override private init() {
         let config = WKWebViewConfiguration()
-        view = WKWebView(frame: .zero, configuration: config)
+        view = DashboardWebView(frame: .zero, configuration: config)
         super.init()
         // The page posts the chat on screen here (dashboard.js `tellApp`).
         config.userContentController.add(self, name: "cfind")
         view.navigationDelegate = self
         view.uiDelegate = self
         view.allowsBackForwardNavigationGestures = false
+        // The glass behind the window shows where the page is transparent.
+        view.setValue(false, forKey: "drawsBackground")
+        view.underPageBackgroundColor = .clear
         let saved = UserDefaults.standard.double(forKey: "zoom")
         if saved > 0 { view.pageZoom = saved }
+        view.attached = { [weak self] window in
+            // The scene hides the title bar; the window is clear so the glass shows.
+            window.isOpaque = false
+            window.backgroundColor = .clear
+            window.appearance = self?.appearance
+            self?.layoutChrome()
+        }
+        // AppKit puts the window buttons back in place on resize and full screen.
+        for name in [NSWindow.didResizeNotification, NSWindow.didEnterFullScreenNotification,
+                     NSWindow.didExitFullScreenNotification] {
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                MainActor.assumeIsolated {
+                    if note.object as? NSWindow === self?.view.window { self?.layoutChrome() }
+                }
+            }
+        }
+        layoutChrome()
     }
 
     /// ⌘+ and ⌘- step the page zoom, ⌘0 resets it. Kept across launches.
     func zoom(by step: Double?) {
         view.pageZoom = step.map { min(3, max(0.5, view.pageZoom + $0)) } ?? 1
         UserDefaults.standard.set(Double(view.pageZoom), forKey: "zoom")
+        layoutChrome()
+    }
+
+    /// Moves the window buttons into the middle of the page's top row, as in apps
+    /// with a sidebar, and tells the page: `mac-app` on <html>, `--mac-lights` (left
+    /// inset past the buttons) and `--mac-bar` (row height) in CSS px. The same
+    /// script runs at document start, so a reload has them from the first paint.
+    private func layoutChrome() {
+        let bar = Self.bar
+        var lights = 0.0
+        // In full screen the buttons live in the menu bar's drop-down; leave them there.
+        if let window = view.window, !window.styleMask.contains(.fullScreen),
+           let close = window.standardWindowButton(.closeButton),
+           let mini = window.standardWindowButton(.miniaturizeButton),
+           let zoom = window.standardWindowButton(.zoomButton),
+           let titlebar = close.superview?.superview {
+            titlebar.frame = NSRect(x: 0, y: window.frame.height - bar, width: titlebar.frame.width, height: bar)
+            let space = mini.frame.minX - close.frame.minX
+            for (i, button) in [close, mini, zoom].enumerated() {
+                button.setFrameOrigin(NSPoint(x: bar / 2 - button.frame.width / 2 + Double(i) * space,
+                                              y: (bar - button.frame.height) / 2))
+            }
+            lights = zoom.convert(zoom.bounds, to: nil).maxX + 12
+        }
+        let zoom = view.pageZoom
+        let js = """
+            document.documentElement.classList.add('mac-app');
+            document.documentElement.style.setProperty('--mac-lights', '\(lights / zoom)px');
+            document.documentElement.style.setProperty('--mac-bar', '\(bar / zoom)px');
+            """
+        // A live resize calls this on every frame.
+        guard js != chrome else { return }
+        chrome = js
+        let scripts = view.configuration.userContentController
+        scripts.removeAllUserScripts()
+        scripts.addUserScript(WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        view.evaluateJavaScript(js)
+    }
+
+    /// A double-click on the page's top row does what a title bar double-click does
+    /// (System Settings, Desktop & Dock).
+    private func zoomWindow() {
+        guard let window = view.window else { return }
+        switch UserDefaults.standard.string(forKey: "AppleActionOnDoubleClick") {
+        case "Minimize": window.miniaturize(nil)
+        case "None", "Do Nothing": break
+        default: window.performZoom(nil)
+        }
     }
 
     func load() {
@@ -117,6 +192,13 @@ final class WebDashboard: NSObject, WKNavigationDelegate, WKUIDelegate, WKScript
 
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
         let key = message.body as? String ?? ""
+        if key == "window:drag" { return view.dragWindow() }
+        if key == "window:zoom" { return zoomWindow() }
+        if key == "theme:dark" || key == "theme:light" {
+            appearance = NSAppearance(named: key == "theme:dark" ? .darkAqua : .aqua)
+            view.window?.appearance = appearance
+            return
+        }
         if key.hasPrefix("agent:") {
             model?.onScreen = .agent(String(key.dropFirst(6)))
         } else if key.hasPrefix("session:") {
@@ -133,6 +215,8 @@ struct WebRoot: View {
 
     var body: some View {
         WebView(view: web.view)
+            .ignoresSafeArea()
+            .background { Glass().ignoresSafeArea() }
             .overlay {
                 if web.down {
                     ContentUnavailableView {
@@ -162,5 +246,48 @@ private struct WebView: NSViewRepresentable {
     let view: WKWebView
     func makeNSView(context: Context) -> WKWebView { view }
     func updateNSView(_ view: WKWebView, context: Context) {}
+}
+
+private struct Glass: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .sidebar
+        view.blendingMode = .behindWindow
+        view.state = .followsWindowActiveState
+        return view
+    }
+    func updateNSView(_ view: NSVisualEffectView, context: Context) {}
+}
+
+/// The window has no title bar to drag, so the page asks for a drag from its top
+/// row while the mouse is still down.
+final class DashboardWebView: WKWebView {
+    var attached: ((NSWindow) -> Void)?
+    private var lastMouseDown: NSEvent?
+
+    override func mouseDown(with event: NSEvent) {
+        lastMouseDown = event
+        super.mouseDown(with: event)
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if let window { attached?(window) }
+    }
+
+    func dragWindow() {
+        guard let down = lastMouseDown, let window else { return }
+        window.performDrag(with: down)
+        // The drag can end without the page seeing the mouse-up. Without one it
+        // stays pressed and misses the double-click.
+        if let up = NSEvent.mouseEvent(with: .leftMouseUp, location: down.locationInWindow,
+                                       modifierFlags: down.modifierFlags,
+                                       timestamp: ProcessInfo.processInfo.systemUptime,
+                                       windowNumber: down.windowNumber, context: nil,
+                                       eventNumber: down.eventNumber, clickCount: down.clickCount,
+                                       pressure: 0) {
+            super.mouseUp(with: up)
+        }
+    }
 }
 #endif

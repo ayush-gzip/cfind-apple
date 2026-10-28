@@ -13,6 +13,11 @@ The page talks to the app in two ways:
 - The app calls `window.cfindOpen(kind, id)` when a notification is clicked.
 - The page posts the open chat (`agent:<id>`, `session:<path>` or empty) to the `cfind`
   message handler, so the app shows no banner for the chat on screen.
+- The page also posts `window:drag` (mouse down on an empty part of its top row),
+  `window:zoom` (double-click there) and `theme:dark` / `theme:light` (its own theme).
+- The app puts class `mac-app` on `<html>` and sets `--mac-lights` (left inset past the
+  window buttons) and `--mac-bar` (top row height), in CSS px, at document start and on
+  zoom, resize and full screen.
 
 ## Build and run
 
@@ -88,7 +93,28 @@ accessibility tree did not list the command menu's field, though a log inside th
 app showed the menu open (`keyup Meta palette=true`) and Return ran its first item.
 The test checks the result (the New agent form), not the menu's field.
 
+## Glass window (2026-10-28)
+
+No title bar. The window buttons sit in the middle of a 52pt top row, the window is
+clear, and an `NSVisualEffectView` (`.sidebar`, behind window) shows through where the
+page is transparent (its sidebar).
+
+| # | step | result |
+| --- | --- | --- |
+| M14 | Probe windows with a unified `NSToolbar` (mine or the one SwiftUI adds): hit test in the top 52pt | `NSToolbarView` takes the click, so the page's top-row buttons would not work. Not used |
+| M15 | SwiftUI replica: `.windowStyle(.hiddenTitleBar)`, buttons moved, hit test at (400,8), (400,26), (400,45), (120,26), (30,40) | The web view gets every click; (26,26) is the close button. Pass |
+| M16 | Replica: resize the window, then key change | Without a resize observer AppKit moves the buttons back to (16,16). With it they stay centred at (26,26). Pass |
+| M17 | Release build, window capture | No band at the top; buttons centred about 26pt from the top and the left. `--mac-lights` 91, `--mac-bar` 52 at zoom 1. Pass |
+| M18 | Unit tests | iOS 36/36. macOS ones left to CI: they launch a second app beside the one in use. Pass |
+
+The page did not paint in M17: windows opened on a Space that was not on screen,
+so WebKit skipped drawing. Check the glass and the page together after install.
+
 ## Not tested yet
+
+- Window drag and double-click from the page's top row (needs the page side), and the
+  synthetic mouse-up after a drag.
+- Native full screen: the buttons and `--mac-lights` 0.
 
 - Clicking a notification to open its chat was not checked by hand.
 - The "cfind is not running" screen: not seen with the daemon stopped.
