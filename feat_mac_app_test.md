@@ -106,6 +106,7 @@ page is transparent (its sidebar).
 | M16 | Replica: resize the window, then key change | Without a resize observer AppKit moves the buttons back to (16,16). With it they stay centred at (26,26). Pass |
 | M17 | Release build, window capture | No band at the top; buttons centred about 26pt from the top and the left. `--mac-lights` 91, `--mac-bar` 52 at zoom 1. Pass |
 | M18 | Unit tests | iOS 36/36. macOS ones left to CI: they launch a second app beside the one in use. Pass |
+| M19 | View → Full Screen (⇧⌘F) calls `toggleFullScreen`; the page no longer takes ⌘⇧F, so the menu gets it. Release build passes. Not run in the installed app yet |
 
 The page did not paint in M17: windows opened on a Space that was not on screen,
 so WebKit skipped drawing. Check the glass and the page together after install.

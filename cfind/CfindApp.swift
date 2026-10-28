@@ -52,6 +52,10 @@ struct CfindApp: App {
                 Button("Actual Size") { WebDashboard.shared.zoom(by: nil) }.keyboardShortcut("0")
                 Button("Zoom In") { WebDashboard.shared.zoom(by: 0.1) }.keyboardShortcut("+")
                 Button("Zoom Out") { WebDashboard.shared.zoom(by: -0.1) }.keyboardShortcut("-")
+                Divider()
+                // ⌃⌘F still works too; ⇧⌘F is the shortcut asked for.
+                Button("Full Screen") { NSApp.keyWindow?.toggleFullScreen(nil) }
+                    .keyboardShortcut("f", modifiers: [.command, .shift])
             }
         }
         #endif
