@@ -212,9 +212,9 @@ ask arrives a poll later and `updatedAt` has changed, the ids differ and two ban
 ## Phone notifications through Bark (2026-10-28)
 
 iOS stops the app in the background and free signing has no push, so the Mac app
-forwards its notes to the Bark app (`cfind/PhonePush.swift`) while you are away from
-the Mac: no input for 2 minutes, or the screen is locked. While away, the chat on the
-Mac screen does not count as read. The text is sealed with AES-GCM (key 16/24/32
+forwards each of its notes to the Bark app (`cfind/PhonePush.swift`) at once (the first
+version sent only while away; the user wanted it immediate). Away from the Mac (no input
+for 2 minutes, or the screen locked), the chat on the Mac screen does not count as read. The text is sealed with AES-GCM (key 16/24/32
 characters; Bark settings AES256, GCM, noPadding), with a fresh 12-character IV per push
 in the `iv` field, which overrides the IV saved in Bark (Bark's CiphertextProcessor). The
 POST body has only `ciphertext` (ciphertext then the 16-byte tag, base64, as CryptoSwift's

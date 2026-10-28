@@ -3,9 +3,9 @@ import CoreGraphics
 import CryptoKit
 import SwiftUI
 
-/// Sends notifications to the iPhone through Bark (github.com/Finb/Bark) while you are
-/// away from the Mac. Bark's server sees only ciphertext: the text is sealed with AES-GCM
-/// here and opened on the phone with the same key (Bark: Push Encryption, GCM, noPadding).
+/// Sends each notification to the iPhone too, through Bark (github.com/Finb/Bark). Bark's
+/// server sees only ciphertext: the text is sealed with AES-GCM here and opened on the phone
+/// with the same key (Bark: Push Encryption, GCM, noPadding).
 enum PhonePush {
     static let urlKey = "barkURL", keyKey = "barkKey", statusKey = "barkStatus"
 
@@ -104,7 +104,7 @@ struct PhonePushSettings: View {
             } header: {
                 Text("iPhone notifications")
             } footer: {
-                Text("While you are away from the Mac (2 minutes without input, or the screen is locked), cfind also sends its notifications to the Bark app on your iPhone. In Bark, turn on Push Encryption with AES256, GCM, noPadding, the same key, and any 12-character IV (cfind sends a new one with each push). Bark's server sees only encrypted text.")
+                Text("cfind also sends each notification to the Bark app on your iPhone. In Bark, turn on Push Encryption with AES256, GCM, noPadding, the same key, and any 12-character IV (cfind sends a new one with each push). Bark's server sees only encrypted text.")
             }
         }
         .formStyle(.grouped)

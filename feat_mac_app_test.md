@@ -127,8 +127,8 @@ so WebKit skipped drawing. Check the glass and the page together after install.
 ## Phone push settings (2026-10-28)
 
 cfind > Settings (⌘,): Bark URL, encryption key, Last push, Send test. Notifier sends each
-note to Bark too while you are away (2 minutes idle or screen locked), and then also shows
-the Mac banner for the chat on screen. Checked with the real `PhonePush.post` against a fake
+note to Bark too, at once. Away (2 minutes idle or screen locked), it also notifies for
+the chat on screen. Checked with the real `PhonePush.post` against a fake
 Bark server (see the iPhone file). The Settings window itself was not opened in a test:
 the user's app was running.
 
