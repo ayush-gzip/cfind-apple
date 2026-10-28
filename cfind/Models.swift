@@ -150,6 +150,8 @@ struct Agent: Decodable, Identifiable, Hashable {
     var sid: String?
     var history: String?
     var model: String?
+    /// "auto" runs commands without asking; anything else asks first.
+    var permissionMode: String?
     var state: String
     var startedAt: Double
     var updatedAt: Double

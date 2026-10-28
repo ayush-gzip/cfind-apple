@@ -309,6 +309,8 @@ struct ChatView: View {
 
     func composer(_ proxy: ScrollViewProxy) -> some View {
         let c = composerState
+        // A message that starts with ! runs as a command in the agent's folder.
+        let shell = c.enabled && agent != nil && draft.hasPrefix("!")
         return VStack(spacing: 6) {
             if let error {
                 Text(error)
@@ -363,9 +365,18 @@ struct ChatView: View {
                 .padding(.leading, 14)
                 .padding(.trailing, 4)
                 .frame(minHeight: 36)
-                .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color(.separator)))
+                .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(shell ? Color.orange : Color(.separator)))
             }
-            if !c.hint.isEmpty {
+            if c.enabled, let a = agent {
+                HStack(spacing: 8) {
+                    modeButton(a)
+                    Text(shell ? "Runs in \(folder(a.cwd)) · \(model.agentName(a.profile)) sees the output with your next message" : c.hint)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, 58)
+            } else if !c.hint.isEmpty {
                 Text(c.hint)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -382,6 +393,26 @@ struct ChatView: View {
             picks = []
             Task { await attach(items) }
         }
+    }
+
+    /// Shift+Tab on the Mac. Auto runs commands without asking; Ask first asks before each one.
+    func modeButton(_ a: Agent) -> some View {
+        let auto = a.permissionMode == "auto"
+        return Button(auto ? "Auto" : "Ask first") {
+            Task {
+                do { try await model.api?.agent(["action": "mode", "id": a.id, "mode": auto ? "manual" : "auto"]) }
+                catch { self.error = error.localizedDescription }
+            }
+        }
+        .buttonStyle(.plain)
+        .font(.caption2.weight(.medium))
+        .foregroundStyle(auto ? Color.primary : Color.secondary)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 2)
+        .background(auto ? Color.orange.opacity(0.15) : Color.clear, in: Capsule())
+        .overlay(Capsule().strokeBorder(auto ? Color.orange.opacity(0.6) : Color(.separator)))
+        .accessibilityLabel(auto ? "Auto mode. Tap to ask before each command" : "Asks before each command. Tap for auto mode")
+        .accessibilityIdentifier("mode")
     }
 
     var canNotSend: Bool {
@@ -457,7 +488,7 @@ struct ChatView: View {
         defer { sending = false }
         do {
             if let a = agent {
-                if c.decline {
+                if c.decline && !text.hasPrefix("!") {
                     try await api.agent(["action": "respond", "id": a.id, "answer": ["allow": false, "message": text]])
                 } else {
                     try await api.agent(["action": "send", "id": a.id, "prompt": text, "images": images])
