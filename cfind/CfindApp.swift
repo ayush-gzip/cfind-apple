@@ -58,7 +58,7 @@ struct CfindApp: App {
                 Divider()
                 // Keep the full-screen shortcut in sync with the dashboard help.
                 Button("Full Screen") { WebDashboard.shared.view.window?.toggleFullScreen(nil) }
-                    .keyboardShortcut("f", modifiers: [.command, .option])
+                    .keyboardShortcut("f", modifiers: [.command, .control])
             }
         }
         Settings { PhonePushSettings() }

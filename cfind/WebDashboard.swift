@@ -46,6 +46,8 @@ final class WebDashboard: NSObject, WKNavigationDelegate, WKUIDelegate, WKScript
             window.isOpaque = false
             window.backgroundColor = .clear
             window.appearance = self?.appearance
+            // Keys go to the page from the start; on the window itself, Esc leaves full screen.
+            if let view = self?.view { window.makeFirstResponder(view) }
             self?.layoutChrome()
         }
         // AppKit puts the window buttons back in place on resize and full screen.
@@ -284,6 +286,10 @@ final class DashboardWebView: WKWebView {
         default: super.otherMouseUp(with: event)
         }
     }
+
+    /// Esc that the page leaves alone comes back here as cancel, and the window
+    /// would leave full screen. Esc only closes things in the page.
+    override func cancelOperation(_ sender: Any?) {}
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()

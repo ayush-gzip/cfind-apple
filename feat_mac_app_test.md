@@ -1,5 +1,27 @@
 # Mac app: test record
 
+## 2026-10-29: Control-Command-F, and Esc keeps full screen
+
+- The key the user meant was ⌃⌘F, the usual macOS full-screen key, not ⌥⌘F. The
+  menu item and the page (`e.metaKey && e.ctrlKey && e.code === "KeyF"`) now use ⌃⌘F;
+  the dashboard help says ⌃⌘F.
+- Esc only closes things in the page. `DashboardWebView.cancelOperation` does nothing,
+  so an Esc the page leaves alone no longer takes the window out of full screen. The
+  web view takes focus when it joins the window: with the window itself focused (at
+  launch, before a click), Esc reached `NSWindow.cancelOperation` and left full screen.
+- In-app probe (scratch copy with bundle id `io.github.ayush-gzip.cfind.probe`, ad-hoc
+  signed, run from the binary with `CFIND_KEY_PROBE=<log>`; a temporary `KeyProbe`
+  posts key events with `NSApp.sendEvent` and logs `styleMask.contains(.fullScreen)`
+  and the first responder). Needs no Accessibility or UI automation permission:
+  - Before the fix, ⌥⌘F with the window focused (menu) and with the page focused
+    (page posts `window:fullscreen`) both entered full screen, so the code was fine.
+  - After: focus at start is `DashboardWebView`; ⌃⌘F enters; Esc, Esc again: still
+    full screen; ⌃⌘F leaves.
+  - A synthetic ⌃⌘F must set `charactersIgnoringModifiers: "f"` (characters is
+    U+0006), or the menu does not match it.
+- XCUITest could not run: "Timed out while enabling automation mode" (this Mac asks
+  for a password to turn on Automation Mode).
+
 ## 2026-10-28: Option-Command-F
 
 - View > Full Screen moved from Shift-Command-F to Option-Command-F, matching the
