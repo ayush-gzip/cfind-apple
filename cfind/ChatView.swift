@@ -242,6 +242,9 @@ struct ChatView: View {
             if let e = a.error { out.append(.init(id: "error", kind: .error(e))) }
             if let p = a.pending { out.append(.init(id: "pending:" + p.id.key, kind: .pending(a))) }
         }
+        if a == nil, let s = session, s.shell == true, s.state == "idle" {
+            out.append(.init(id: "shell", kind: .note("Done · a background command is still running")))
+        }
         if let loadError { out.append(.init(id: "load-error", kind: .error(loadError))) }
         if out.isEmpty { out.append(.init(id: "empty", kind: .note(loading ? "Opening conversation…" : "No messages yet"))) }
         return out

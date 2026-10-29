@@ -257,6 +257,14 @@ alignment is not used.
   2x2 table: box hugs the table. Pass.
 - iOS unit tests 47/47, Mac build OK.
 
+## Background command after the turn (2026-10-29)
+
+- The daemon now sends a session whose turn ended while a background command runs as
+  `idle` with `shell: true` (it was `running`). Lists show Idle without an app update.
+- The chat adds a note "Done · a background command is still running" (`Session.shell`,
+  `ChatView.items`). Needs the app reinstalled.
+- iOS unit tests 47/47, Mac build passes. Not checked on the phone.
+
 ## Known limits
 
 - The first metrics event is the whole snapshot (about 500 KB); after that only

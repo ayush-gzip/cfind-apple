@@ -108,6 +108,8 @@ struct Session: Decodable, Hashable {
     var ask: String?
     var open: Bool?
     var tmux: Bool?
+    /// The turn ended, but a command it started in the background still runs.
+    var shell: Bool?
 }
 
 struct Snapshot: Decodable {
