@@ -13,5 +13,19 @@ final class BoardTests: XCTestCase {
         XCTAssertEqual(AgentsView.lane("idle"), 3)
         XCTAssertEqual(AgentsView.lane("failed"), 3)
     }
+
+    func testOrderIsLastMessageNotLastUpdate() {
+        let msgs = """
+        [{"id":"1","role":"user","text":"go","time":5},{"id":"2","role":"assistant","text":"done","time":8},
+         {"id":"3","role":"tool","text":"ls","time":20},{"id":"4","role":"note","text":"mode","time":30}]
+        """
+        XCTAssertEqual(AgentsView.lastTalk(makeAgent(updatedAt: 40, messages: msgs)), 8)
+        XCTAssertEqual(AgentsView.lastTalk(makeAgent(updatedAt: 40)), 40, "no messages yet: last update")
+        let s = try! decode(Session.self, """
+        {"id":"s","profile":"p","source":"claude","path":"/s","cwd":"/x","title":"t","updatedAt":9,"lastActive":3,"state":"idle"}
+        """)
+        XCTAssertEqual(s.lastActive, 3)
+        XCTAssertNil(makeSession(state: "idle").lastActive, "an older daemon sends no lastActive")
+    }
 }
 #endif

@@ -103,6 +103,8 @@ struct Session: Decodable, Hashable {
     var title: String
     var parent: String?
     var updatedAt: Double
+    /// When you or the agent last wrote a message; the Agents tab sorts by it.
+    var lastActive: Double?
     var state: String
     /// The question the agent ended its turn with. Set only while idle.
     var ask: String?

@@ -274,6 +274,15 @@ alignment is not used.
 - iOS simulator and macOS builds pass. Not run on the phone; the UI test has no split
   tmux window, so the button is not covered there. Needs the app reinstalled.
 
+## Agents tab order (2026-10-30)
+
+- The Agents tab had no sort of its own (agents, then sessions by `updatedAt`). It now sorts
+  by `lastActive` from the daemon (dashboard agents: newest user or assistant message time),
+  and the row age shows that time. An older daemon sends no `lastActive`: falls back to
+  `updatedAt`.
+- `BoardTests.testOrderIsLastMessageNotLastUpdate`; iOS unit tests 48/48; Mac build passes.
+  Needs the app reinstalled. Not checked on the phone.
+
 ## Known limits
 
 - The first metrics event is the whole snapshot (about 500 KB); after that only

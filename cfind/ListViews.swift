@@ -148,7 +148,8 @@ struct AgentsView: View {
         var state: String
         var profile: String
         var cwd: String
-        var updatedAt: Double
+        /// When you or the agent last wrote: the order, and the age shown.
+        var lastActive: Double
         var terminal: Bool
         /// The id its subagents name as `parent`.
         var parent: String?
@@ -164,25 +165,31 @@ struct AgentsView: View {
         }
     }
 
+    /// The newest message you or the agent wrote; tool rows do not count.
+    static func lastTalk(_ a: Agent) -> Double {
+        a.messages.filter { $0.role == "user" || $0.role == "assistant" }.compactMap(\.time).max() ?? a.updatedAt
+    }
+
     var items: [Item] {
         let owned = model.agents.map {
             Item(id: .agent($0.id), title: $0.title, state: $0.pending != nil ? "waiting" : shownState(state: $0.state, ask: $0.ask),
-                 profile: $0.profile, cwd: $0.cwd, updatedAt: $0.updatedAt, terminal: false, parent: $0.sid)
+                 profile: $0.profile, cwd: $0.cwd,
+                 lastActive: Self.lastTalk($0), terminal: false, parent: $0.sid)
         }
         let open = (model.snapshot?.sessions ?? []).filter {
             $0.parent == nil && model.agent(for: $0) == nil
                 && ($0.open == true || ["running", "waiting", "stale"].contains($0.state))
         }.map {
             Item(id: .session($0.path), title: $0.title, state: shownState(state: $0.state, ask: $0.ask), profile: $0.profile,
-                 cwd: $0.cwd, updatedAt: $0.updatedAt, terminal: true, parent: $0.id)
+                 cwd: $0.cwd, lastActive: $0.lastActive ?? $0.updatedAt, terminal: true, parent: $0.id)
         }
-        return owned + open
+        return (owned + open).sorted { $0.lastActive > $1.lastActive }
     }
 
     func row(_ a: Item) -> some View {
         ChatLink(target: a.id) {
             RowLabel(title: a.title, state: a.state, profile: a.profile, cwd: a.cwd,
-                     updatedAt: a.updatedAt, terminal: a.terminal)
+                     updatedAt: a.lastActive, terminal: a.terminal)
         }
     }
 }
