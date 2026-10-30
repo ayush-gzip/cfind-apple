@@ -378,8 +378,12 @@ struct TerminalCard: View {
     @State private var screen = ""
     @State private var readError: String?
     @State private var keyError: String?
+    @State private var split = false
+    @State private var zoomed = false
+    /// The pane this card zoomed; closing the card unzooms it.
+    @State private var zoomedHere: (profile: String, sid: String)?
 
-    private struct Screen: Decodable { let screen: String }
+    private struct Screen: Decodable { let screen: String; let split: Bool?; let zoomed: Bool? }
     private static let arrows = [("Up", "arrow.up"), ("Down", "arrow.down"), ("Left", "arrow.left"), ("Right", "arrow.right")]
 
     var body: some View {
@@ -396,6 +400,8 @@ struct TerminalCard: View {
             .frame(maxWidth: .infinity, maxHeight: 220)
             .background(Color.surface, in: RoundedRectangle(cornerRadius: 12))
             HStack(spacing: 6) {
+                // A short pane shows a cut menu; zooming fills its tmux window.
+                if split { zoomButton }
                 ForEach(Self.arrows, id: \.0) { key, symbol in
                     keyButton(key) { Image(systemName: symbol) }.accessibilityLabel(key)
                 }
@@ -411,11 +417,44 @@ struct TerminalCard: View {
             }
         }
         .task(id: session.id) {
+            if zoomedHere?.sid != session.id { unzoom() }
             while !Task.isCancelled {
                 await read()
                 try? await Task.sleep(for: .seconds(1))
             }
         }
+        .onDisappear { unzoom() }
+    }
+
+    var zoomButton: some View {
+        Button {
+            Task {
+                do {
+                    keyError = nil
+                    let on = !zoomed
+                    _ = try await model.api?.agent(["action": "live-zoom", "profile": session.profile, "sid": session.id, "on": on])
+                    zoomedHere = on ? (session.profile, session.id) : nil
+                    // Claude redraws at the new size.
+                    try? await Task.sleep(for: .milliseconds(300))
+                    await read()
+                } catch {
+                    keyError = error.localizedDescription
+                }
+            }
+        } label: {
+            Image(systemName: zoomed ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                .font(.footnote.weight(.medium))
+                .frame(maxWidth: .infinity, minHeight: 30)
+        }
+        .buttonStyle(.bordered)
+        .accessibilityLabel(zoomed ? "Unzoom" : "Zoom")
+        .accessibilityIdentifier("term-zoom")
+    }
+
+    func unzoom() {
+        guard let z = zoomedHere, let api = model.api else { return }
+        zoomedHere = nil
+        Task { _ = try? await api.agent(["action": "live-zoom", "profile": z.profile, "sid": z.sid, "on": false]) }
     }
 
     func keyButton(_ key: String, @ViewBuilder label: () -> some View) -> some View {
@@ -445,6 +484,8 @@ struct TerminalCard: View {
             let r: Screen = try await api.get("api/live-screen", ["profile": session.profile, "sid": session.id])
             // tmux sends every row of the pane; the blank ones at the end only push the text up.
             screen = r.screen.replacing(/\s+$/, with: "")
+            split = r.split ?? false
+            zoomed = r.zoomed ?? false
             readError = nil
         } catch {
             if !Task.isCancelled { readError = error.localizedDescription }

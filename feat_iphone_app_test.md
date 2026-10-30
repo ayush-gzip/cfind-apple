@@ -265,6 +265,15 @@ alignment is not used.
   `ChatView.items`). Needs the app reinstalled.
 - iOS unit tests 47/47, Mac build passes. Not checked on the phone.
 
+## Zoom a short tmux pane (2026-10-30)
+
+- The terminal view gets a Zoom button (first in the key row, `term-zoom`) when the
+  pane shares its tmux window. It sends `live-zoom` on/off; the daemon zooms the pane
+  like prefix z and gives the keyboard back on Unzoom. Closing the card or opening
+  another session unzooms a zoom started from this card.
+- iOS simulator and macOS builds pass. Not run on the phone; the UI test has no split
+  tmux window, so the button is not covered there. Needs the app reinstalled.
+
 ## Known limits
 
 - The first metrics event is the whole snapshot (about 500 KB); after that only
