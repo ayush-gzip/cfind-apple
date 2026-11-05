@@ -328,7 +328,7 @@ struct ChatView: View {
             return ["running", "waiting"].contains(s.state)
                 ? ComposerState(enabled: true, placeholder: "Queue a message for \(label)…", hint: "Runs after the current reply")
                 : ComposerState(enabled: true, placeholder: "Continue this conversation…",
-                                hint: "Sends to \(label) if it is open, or continues on the Mac")
+                                hint: "Sends to \(label) if it is open, or starts it in tmux on the Mac")
         }
         if local && s.open == true && s.tmux == true && (idle || s.state == "running") {
             return ComposerState(
@@ -351,7 +351,7 @@ struct ChatView: View {
                                  takeover: local && s.open == true && s.tmux != true && idle)
         }
         return ComposerState(enabled: true, placeholder: "Continue this conversation…",
-                             hint: "Continues with \(label) in \(folder(s.cwd))")
+                             hint: "Starts it in tmux in \(folder(s.cwd))")
     }
 
     func composer(_ proxy: ScrollViewProxy) -> some View {
@@ -558,7 +558,9 @@ struct ChatView: View {
                     let data = try await api.agentData(
                         ["action": "create", "profile": s.profile, "cwd": s.cwd, "sid": s.id, "prompt": text, "images": images])
                     let reply = try JSONDecoder().decode(JSON.self, from: data)
-                    if reply["queued"]?.bool == true {
+                    if reply["terminal"]?.bool == true {
+                        withAnimation { toast = "Opened in tmux" }
+                    } else if reply["queued"]?.bool == true {
                         withAnimation { toast = reply["busy"]?.bool == true ? "Queued after the current reply" : "Sent to Codex" }
                     } else {
                         let created = try JSONDecoder().decode(Agent.self, from: data)
