@@ -283,6 +283,55 @@ alignment is not used.
 - `BoardTests.testOrderIsLastMessageNotLastUpdate`; iOS unit tests 48/48; Mac build passes.
   Needs the app reinstalled. Not checked on the phone.
 
+## Modern UI, Messages style (2026-11-05, Linear STUB-70)
+
+What changed: list rows are Messages conversations (avatar with the agent mark in the
+profile colour and a state dot, folder as the name, the task or its question as the preview,
+the state as a coloured word); questions sort first under Active; solid blue user bubbles with
+white text, grey agent bubbles, runs grouped (name over the first agent bubble, tail on the
+last), a "Today 1:52 PM" line over a message after a 15 minute gap; tool calls are pills with
+a symbol per tool; code is a dark card; the composer is a glass capsule (Liquid Glass from
+iOS 26, material before) with a blue send arrow that shows only with text; a light tap on
+send; new bubbles spring in after the first load (off with Reduce Motion); Usage shows big
+rounded numbers and colours the bar by what is left.
+
+Screenshot data: a scratch daemon with made-up sessions (scratchpad `demo-harness.mjs`:
+own HOME, port 4391, fake Claude that asks a question with options, statusline limits).
+`CfindUITests.testScreens` pairs, takes Sessions, a chat end and top, Agents, a question,
+Usage, then relaunches with `-UIPreferredContentSizeCategoryName
+UICTContentSizeCategoryAccessibilityXL` for Sessions and a chat.
+
+| # | step | result |
+| --- | --- | --- |
+| U1 | before and after, light, iPhone 17 Pro iOS 27.0 simulator | rows, bubbles, pills, code card, composer and usage as above. Pass |
+| U2 | dark mode | bubbles, dark code card in a dark bubble, avatar dots ringed by the row colour. Pass |
+| U3 | accessibility XL | first run cut the folder to "ios…" and the preview to two lines; now the folder takes the width first, the profile word hides (the avatar colour stays), the preview gets 6 lines. Pass |
+| U4 | `ChatArrangeTests` (runs, time lines, tool rows break a run, notes) | 2/2. iOS unit tests 50/50 |
+| U5 | `testSendNowStopAndTerminalView` on `tools/phone-harness.mjs` | passed (34 s). Queued bubble still dashed with Send now and Remove; terminal keys row unchanged |
+| U6 | macOS build (`CODE_SIGNING_ALLOWED=NO`) | succeeded. macOS unit tests not run locally (they host the Mac app while cfind runs); CI runs them |
+| U7 | haptic and spring | in code only: the simulator has no haptics; the spring is seen in the demo video |
+
+The pairing screen at accessibility XL puts the address field below the fold, so a UI test
+that pairs at that size cannot find it. Not changed here.
+
+## Demo test (2026-11-05, Linear STUB-128)
+
+`testDemo` drives the app slowly for the demo video in context-find
+(`demo/video`). It is skipped unless `CFIND_DEMO` is set, so a normal test run
+does not run it. The context-find recorder runs it with
+`TEST_RUNNER_CFIND_BASE`, `TEST_RUNNER_CFIND_CODE` and `TEST_RUNNER_CFIND_DEMO=1`
+against its made-up-data daemon.
+
+Each step prints a `CFIND_DEMO {json}` line: `sync`, scene marks, taps (0-1 of
+the screen) and typing. On `sync` the recorder flashes dark mode to tie the
+simulator video clock to the test clock.
+
+| # | Case | Result |
+|---|---|---|
+| T1 | Pair, then sessions, chat, follow-up in the release notes chat, Usage | Pass, 3 runs |
+| T2 | Event times match the video after the sync | Pass: 1 fps contact sheet matches each scene |
+| T3 | Without `CFIND_DEMO` | Skipped |
+
 ## Known limits
 
 - The first metrics event is the whole snapshot (about 500 KB); after that only

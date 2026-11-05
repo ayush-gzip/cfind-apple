@@ -6,9 +6,19 @@ struct Bubble: View, Equatable {
     let user: Bool
     let label: String
     var queued = false
+    /// Where it sits in a run of bubbles from one side: the agent's name goes over
+    /// the first, the tail on the last, as in Messages.
+    var first = true
+    var last = true
 
     var body: some View {
         VStack(alignment: user ? .trailing : .leading, spacing: 4) {
+            if first && !user && !queued {
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 12)
+            }
             if let images = message.images, !images.isEmpty {
                 HStack(spacing: 6) {
                     ForEach(images.indices, id: \.self) { RemoteImage(source: images[$0]) }
@@ -18,25 +28,18 @@ struct Bubble: View, Equatable {
             if !message.text.isEmpty {
                 MarkdownText(text: message.text)
                     .padding(.horizontal, 13)
-                    .padding(.vertical, 9)
+                    .padding(.vertical, 8)
+                    .foregroundStyle(queued ? AnyShapeStyle(.secondary) : user ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+                    .tint(user && !queued ? .white : .accentColor)
                     .background(background, in: shape)
                     .overlay {
                         if queued { shape.strokeBorder(Color.line, style: StrokeStyle(lineWidth: 1, dash: [4])) }
                     }
-                    .foregroundStyle(queued ? .secondary : .primary)
                     .contextMenu {
                         Button("Copy", systemImage: "doc.on.doc") { Pasteboard.copy(message.text) }
                     }
             }
-            if !queued {
-                HStack(spacing: 6) {
-                    Text(user ? "You" : label)
-                    if let t = message.time { Text(Date(timeIntervalSince1970: t / 1000), style: .time) }
-                }
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 6)
-            } else {
+            if queued {
                 Text("Queued").font(.caption2).foregroundStyle(.secondary)
             }
         }
@@ -44,12 +47,34 @@ struct Bubble: View, Equatable {
         .padding(user ? .leading : .trailing, Self.gutter)
     }
 
-    static let gutter = 36.0
-    var background: Color { queued ? .clear : user ? Color.blue.opacity(0.16) : Color.surface }
+    static let gutter = 44.0
+    var background: Color { queued ? .clear : user ? .accentColor : .agentBubble }
 
     var shape: UnevenRoundedRectangle {
-        UnevenRoundedRectangle(cornerRadii: .init(
-            topLeading: user ? 18 : 6, bottomLeading: 18, bottomTrailing: 18, topTrailing: user ? 6 : 18))
+        let tail = last && !queued ? 5.0 : 18
+        return UnevenRoundedRectangle(cornerRadii: .init(
+            topLeading: 18, bottomLeading: user ? 18 : tail, bottomTrailing: user ? tail : 18, topTrailing: 18))
+    }
+}
+
+/// The day and time over a message that comes 15 minutes or more after the one before.
+struct TimeRow: View {
+    let time: Double
+
+    var body: some View {
+        let date = Date(timeIntervalSince1970: time / 1000)
+        Text("\(Text(day(date)).fontWeight(.semibold)) \(date.formatted(date: .omitted, time: .shortened))")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 6)
+    }
+
+    func day(_ date: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) { return "Today" }
+        if calendar.isDateInYesterday(date) { return "Yesterday" }
+        return date.formatted(.dateTime.weekday(.wide).day().month(.abbreviated))
     }
 }
 
@@ -81,7 +106,7 @@ struct TypingBubble: View {
         .foregroundStyle(.secondary)
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(Color.surface, in: Capsule())
+        .background(Color.agentBubble, in: Capsule())
         .onAppear { phase = true }
         .accessibilityLabel("Working")
     }
@@ -98,25 +123,30 @@ struct ToolRow: View {
                 withAnimation(.snappy) { open.toggle() }
                 if open { opened() }
             } label: {
-                HStack(spacing: 7) {
-                    Image(systemName: "terminal").font(.caption).foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    Image(systemName: Self.symbol(message.tool?.name ?? ""))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
                     Text(message.tool?.name ?? "Tool").font(.footnote.weight(.semibold))
                     Text(message.text)
                         .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
-                    Spacer(minLength: 4)
                     if let tool = message.tool, tool.output != nil {
-                        Text(tool.error == true ? "Failed" : "Done")
-                            .font(.caption2)
-                            .foregroundStyle(tool.error == true ? .red : .secondary)
+                        Image(systemName: tool.error == true ? "xmark.circle.fill" : "checkmark")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(tool.error == true ? Color.red : Color.secondary)
+                            .accessibilityLabel(tool.error == true ? "Failed" : "Done")
                     }
                     Image(systemName: "chevron.right")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(.tertiary)
                         .rotationEffect(.degrees(open ? 90 : 0))
                 }
-                .contentShape(Rectangle())
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(Color.dimFill, in: Capsule())
+                .contentShape(Capsule())
             }
             .buttonStyle(.plain)
             if open, let tool = message.tool {
@@ -126,10 +156,21 @@ struct ToolRow: View {
                 }
             }
         }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 9)
-        .background(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.line))
-        .padding(.trailing, 20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.trailing, Bubble.gutter)
+    }
+
+    static func symbol(_ tool: String) -> String {
+        switch tool {
+        case "Bash", "shell", "exec_command", "local_shell": "terminal"
+        case "Read", "NotebookRead": "doc.text"
+        case "Write", "Edit", "MultiEdit", "NotebookEdit", "apply_patch": "pencil"
+        case "Grep", "Glob", "WebSearch", "web_search": "magnifyingglass"
+        case "WebFetch": "globe"
+        case "Task", "Agent": "person.2"
+        case "TodoWrite", "update_plan": "checklist"
+        default: "wrench.and.screwdriver"
+        }
     }
 }
 
@@ -155,18 +196,21 @@ struct CodeBlock: View {
                 }
                 .accessibilityLabel("Copy")
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            Divider()
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
             ScrollView(.horizontal, showsIndicators: false) {
                 Text(text)
                     .font(.system(.footnote, design: .monospaced))
+                    .foregroundStyle(.primary)
                     .textSelection(.enabled)
-                    .padding(10)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 4)
+                    .padding(.bottom, 10)
             }
         }
-        .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.line.opacity(0.6)))
+        .background(Color(white: 0.12), in: RoundedRectangle(cornerRadius: 12))
+        // A dark card in light mode too, as code reads in most editors.
+        .environment(\.colorScheme, .dark)
     }
 }
 
@@ -181,6 +225,7 @@ struct TableBlock: View {
             grid.fixedSize(horizontal: true, vertical: false)
             ScrollView(.horizontal, showsIndicators: false) { grid }
         }
+        .foregroundStyle(Color.primary)
         .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.line.opacity(0.6)))
     }

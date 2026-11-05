@@ -39,31 +39,97 @@ struct ProfileTag: View {
     }
 }
 
-/// A session or agent in a list: title, then state, profile and folder.
+/// The agent's mark in a circle of the profile colour, with a dot for a state that needs a look.
+struct Avatar: View {
+    let profile: String
+    let state: String
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Image(model.profile(profile)?.source == "codex" ? "CodexMark" : "ClaudeMark")
+            .resizable()
+            .scaledToFit()
+            .frame(width: 20, height: 20)
+            .foregroundStyle(.white)
+            .frame(width: 40, height: 40)
+            .background(profileColor(profile).gradient, in: Circle())
+            .overlay(alignment: .bottomTrailing) {
+                if notable(state) {
+                    Circle()
+                        .fill(StateDot(state: state).color)
+                        .padding(2.5)
+                        .background(Color(.secondarySystemGroupedBackground), in: Circle())
+                        .frame(width: 15, height: 15)
+                        .offset(x: 2, y: 2)
+                }
+            }
+            .accessibilityHidden(true)
+    }
+}
+
+/// States worth a coloured word in a row; idle and finished ones are not.
+func notable(_ state: String) -> Bool {
+    ["running", "queued", "waiting", "asking", "failed", "errored", "stale"].contains(state)
+}
+
+/// A session or agent in a list, as a Messages conversation: the folder as the
+/// name, the task (or the question it asks) as the preview.
 struct RowLabel: View {
     let title: String
     let state: String
     let profile: String
     let cwd: String
     let updatedAt: Double
+    var ask: String?
     var terminal = false
+    @Environment(AppModel.self) private var model
+    @Environment(\.dynamicTypeSize) private var size
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(oneLine(title)).font(.body).lineLimit(2)
-            HStack(spacing: 6) {
-                StateDot(state: state)
-                if terminal { Image(systemName: "terminal").accessibilityLabel("In a terminal") }
-                Text(stateLabel(state))
-                ProfileTag(profile: profile)
-                Text("· \(folder(cwd))").lineLimit(1)
-                Spacer(minLength: 4)
-                Text(age(updatedAt))
+        // At the largest text sizes the profile shows only as the avatar's colour.
+        let big = size.isAccessibilitySize
+        HStack(alignment: .top, spacing: 12) {
+            Avatar(profile: profile, state: state)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(URL(fileURLWithPath: cwd).lastPathComponent)
+                        .font(.body.weight(.semibold))
+                        .lineLimit(big ? 2 : 1)
+                        .layoutPriority(1)
+                    if !big {
+                        Text(model.shortLabel(profile))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    if terminal {
+                        Image(systemName: "terminal")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel("In a terminal")
+                    }
+                    Spacer(minLength: 4)
+                    Text(age(updatedAt))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize()
+                }
+                preview
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(big ? 6 : 2)
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
+    }
+
+    var preview: Text {
+        let text = Text(oneLine(state == "asking" ? ask ?? title : title))
+        guard notable(state) else { return text }
+        // Yellow words are hard to read on white.
+        let word = Text(stateLabel(state)).fontWeight(.medium)
+            .foregroundStyle(state == "stale" ? Color.secondary : StateDot(state: state).color)
+        return Text("\(word) · \(text)")
     }
 }
 

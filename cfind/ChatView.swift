@@ -10,10 +10,14 @@ struct ChatItem: Identifiable {
         case queued(Int, QueueItem)
         case error(String)
         case pending(Agent)
+        case time(Double)
     }
 
     let id: String
     let kind: Kind
+    /// First and last of a run of bubbles from one side.
+    var first = true
+    var last = true
 }
 
 /// What the message box can do for this chat; mirrors the web dashboard.
@@ -54,6 +58,11 @@ struct ChatView: View {
     @State private var term: (state: String, show: Bool)?
     /// A message waits in a busy Claude terminal; Send now types Ctrl+X Ctrl+S.
     @State private var sentWhileBusy = false
+    /// Counts sends, for the tap you feel.
+    @State private var sends = 0
+    /// New bubbles spring in only after the first load, so opening a chat does not animate all of it.
+    @State private var settled = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(target: ChatTarget) {
         _current = State(initialValue: target)
@@ -89,23 +98,36 @@ struct ChatView: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 14) {
-                    ForEach(items) { item in
-                        itemView(item, proxy: proxy).id(item.id)
+                let list = items
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(list) { item in
+                        itemView(item, proxy: proxy)
+                            .padding(.top, item.first ? 12 : 2)
+                            .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .opacity))
+                            .id(item.id)
                     }
                     Color.clear.frame(height: 1).id("bottom")
                         .onAppear { atBottom = true }
                         .onDisappear { atBottom = false }
                 }
                 .padding(.horizontal, 14)
-                .padding(.vertical, 12)
+                .padding(.bottom, 12)
+                .animation(settled && !reduceMotion ? .spring(duration: 0.35, bounce: 0.15) : nil, value: list.count)
             }
             .defaultScrollAnchor(.bottom)
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: signature) {
                 if atBottom { withAnimation { proxy.scrollTo("bottom", anchor: .bottom) } }
             }
-            .safeAreaInset(edge: .bottom) { composer(proxy) }
+            .composerBar { composer(proxy) }
+        }
+        .sensoryFeedback(.impact(weight: .light), trigger: sends)
+        .onChange(of: loading) { _, now in
+            guard !now else { return }
+            Task {
+                try? await Task.sleep(for: .seconds(0.5))
+                settled = true
+            }
         }
         .inlineTitle()
         .toolbar {
@@ -247,6 +269,31 @@ struct ChatView: View {
         }
         if let loadError { out.append(.init(id: "load-error", kind: .error(loadError))) }
         if out.isEmpty { out.append(.init(id: "empty", kind: .note(loading ? "Opening conversation…" : "No messages yet"))) }
+        return Self.arrange(out)
+    }
+
+    /// Puts the time over a message that comes 15 minutes or more after the one
+    /// before, and marks runs of bubbles from one side, as Messages does.
+    static func arrange(_ items: [ChatItem]) -> [ChatItem] {
+        var out: [ChatItem] = []
+        var before: Double?
+        for item in items {
+            if case .message(let m) = item.kind, let t = m.time {
+                if before.map({ t - $0 >= 15 * 60_000 }) ?? true { out.append(.init(id: "t:" + item.id, kind: .time(t))) }
+                before = t
+            }
+            out.append(item)
+        }
+        func role(_ i: Int) -> String? {
+            guard out.indices.contains(i), case .message(let m) = out[i].kind, m.role == "user" || m.role == "assistant"
+            else { return nil }
+            return m.role
+        }
+        for i in out.indices {
+            guard let r = role(i) else { continue }
+            out[i].first = role(i - 1) != r
+            out[i].last = role(i + 1) != r
+        }
         return out
     }
 
@@ -270,8 +317,11 @@ struct ChatView: View {
             NoteRow(text: m.text)
         case .message(let m):
             // Equal rows skip their body, so a new message does not re-render the others' Markdown.
-            Bubble(message: m, user: m.role == "user", label: model.label(agent?.profile ?? session?.profile ?? ""))
+            Bubble(message: m, user: m.role == "user", label: model.label(agent?.profile ?? session?.profile ?? ""),
+                   first: item.first, last: item.last)
                 .equatable()
+        case .time(let t):
+            TimeRow(time: t)
         case .note(let text):
             NoteRow(text: text)
         case .typing:
@@ -375,7 +425,7 @@ struct ChatView: View {
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(.secondary)
                             .frame(width: 36, height: 36)
-                            .background(Color.surface, in: Circle())
+                            .glass(in: Circle())
                     }
                     .buttonStyle(.plain)
                     .disabled(attachments.count >= 4 || c.decline)
@@ -399,14 +449,19 @@ struct ChatView: View {
                         .padding(.bottom, 4)
                         .accessibilityLabel("Stop")
                         .accessibilityIdentifier("stop")
-                    } else if c.enabled {
+                    } else if c.enabled && !canNotSend {
                         Button {
                             Task { await send(c) }
                         } label: {
-                            Image(systemName: "arrow.up.circle.fill").font(.system(size: 28))
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 30, height: 30)
+                                .background(Color.accentColor, in: Circle())
                         }
-                        .disabled(canNotSend)
-                        .padding(.bottom, 4)
+                        .buttonStyle(.plain)
+                        .padding(.bottom, 3)
+                        .transition(.scale.combined(with: .opacity))
                         .accessibilityLabel("Send")
                         .accessibilityIdentifier("send")
                     }
@@ -414,7 +469,9 @@ struct ChatView: View {
                 .padding(.leading, 14)
                 .padding(.trailing, 4)
                 .frame(minHeight: 36)
-                .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(shell ? Color.orange : Color(.separator)))
+                .glass(in: RoundedRectangle(cornerRadius: 18))
+                .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(shell ? Color.orange : Color.line.opacity(0.5)))
+                .animation(reduceMotion ? nil : .spring(duration: 0.25), value: canNotSend)
             }
             if c.enabled, let a = agent {
                 HStack(spacing: 8) {
@@ -442,7 +499,6 @@ struct ChatView: View {
         .padding(.horizontal, 12)
         .padding(.top, 8)
         .padding(.bottom, 6)
-        .background(Color(.systemBackground))
         .onChange(of: picks) { _, items in
             guard !items.isEmpty else { return }
             picks = []
@@ -536,6 +592,7 @@ struct ChatView: View {
         }
         let images = attachments.compactMap(\.uploadId)
         let kept = (draft, attachments)
+        sends += 1
         sending = true
         error = nil
         draft = ""
