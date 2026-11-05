@@ -36,9 +36,31 @@ extension Color {
     static let line = Color(.separator)
     static let dim = Color(.tertiaryLabel)
     static let dimFill = Color(.tertiarySystemFill)
+    /// The grey of an agent's bubble, as in Messages.
+    static let agentBubble = Color(.systemGray5)
 }
 
 extension View {
+    /// Liquid Glass from iOS 26; a blur material before it.
+    @ViewBuilder func glass(in shape: some Shape) -> some View {
+        if #available(iOS 26.0, *) {
+            glassEffect(.regular.interactive(), in: shape)
+        } else {
+            background(.regularMaterial, in: shape)
+        }
+    }
+
+    /// The message box under a chat: from iOS 26 a bar the chat scrolls under, with
+    /// the system's edge blur; before it, a material bar.
+    @ViewBuilder func composerBar(@ViewBuilder _ bar: () -> some View) -> some View {
+        let content = bar()
+        if #available(iOS 26.0, *) {
+            safeAreaBar(edge: .bottom) { content }
+        } else {
+            safeAreaInset(edge: .bottom) { content.background(.bar) }
+        }
+    }
+
     func inlineTitle() -> some View {
         navigationBarTitleDisplayMode(.inline)
     }

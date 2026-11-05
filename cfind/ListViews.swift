@@ -12,9 +12,12 @@ struct SessionsView: View {
 
     var body: some View {
         let all = sessions
-        // Open in a terminal counts as active even when idle.
-        let live = { (s: Session) in activeStates.contains(s.state) || s.open == true }
-        let active = all.filter(live)
+        // Open in a terminal, or waiting for your answer, counts as active even when idle.
+        let live = { (s: Session) in activeStates.contains(s.state) || s.open == true || s.ask != nil }
+        // Questions first, then the order the Mac sends.
+        let active = all.filter(live).enumerated()
+            .sorted { ($0.element.ask != nil ? 0 : 1, $0.offset) < ($1.element.ask != nil ? 0 : 1, $1.offset) }
+            .map(\.element)
         TabStack {
             ChatList {
                 ConnectionRow()
@@ -94,7 +97,7 @@ struct SessionsView: View {
     func row(_ s: Session) -> some View {
         ChatLink(target: model.agent(for: s).map { ChatTarget.agent($0.id) } ?? .session(s.path)) {
             RowLabel(title: s.title, state: shownState(state: s.state, ask: s.ask), profile: s.profile, cwd: s.cwd,
-                     updatedAt: s.updatedAt)
+                     updatedAt: s.updatedAt, ask: s.ask)
         }
     }
 }
@@ -150,6 +153,7 @@ struct AgentsView: View {
         var cwd: String
         /// When you or the agent last wrote: the order, and the age shown.
         var lastActive: Double
+        var ask: String?
         var terminal: Bool
         /// The id its subagents name as `parent`.
         var parent: String?
@@ -174,14 +178,14 @@ struct AgentsView: View {
         let owned = model.agents.map {
             Item(id: .agent($0.id), title: $0.title, state: $0.pending != nil ? "waiting" : shownState(state: $0.state, ask: $0.ask),
                  profile: $0.profile, cwd: $0.cwd,
-                 lastActive: Self.lastTalk($0), terminal: false, parent: $0.sid)
+                 lastActive: Self.lastTalk($0), ask: $0.ask, terminal: false, parent: $0.sid)
         }
         let open = (model.snapshot?.sessions ?? []).filter {
             $0.parent == nil && model.agent(for: $0) == nil
                 && ($0.open == true || ["running", "waiting", "stale"].contains($0.state))
         }.map {
             Item(id: .session($0.path), title: $0.title, state: shownState(state: $0.state, ask: $0.ask), profile: $0.profile,
-                 cwd: $0.cwd, lastActive: $0.lastActive ?? $0.updatedAt, terminal: true, parent: $0.id)
+                 cwd: $0.cwd, lastActive: $0.lastActive ?? $0.updatedAt, ask: $0.ask, terminal: true, parent: $0.id)
         }
         return (owned + open).sorted { $0.lastActive > $1.lastActive }
     }
@@ -189,7 +193,7 @@ struct AgentsView: View {
     func row(_ a: Item) -> some View {
         ChatLink(target: a.id) {
             RowLabel(title: a.title, state: a.state, profile: a.profile, cwd: a.cwd,
-                     updatedAt: a.lastActive, terminal: a.terminal)
+                     updatedAt: a.lastActive, ask: a.ask, terminal: a.terminal)
         }
     }
 }
@@ -287,12 +291,21 @@ struct UsageView: View {
 
     func quota(_ name: String, _ q: Quota?) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
+            HStack(alignment: .firstTextBaseline) {
                 Text(name)
                 Spacer()
-                Text(q?.left.map { "\($0)% left" } ?? "Not available").foregroundStyle(.secondary)
+                if let left = q?.left {
+                    Text("\(left)%")
+                        .font(.system(.title2, design: .rounded).weight(.semibold))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                    Text("left").foregroundStyle(.secondary)
+                } else {
+                    Text("Not available").foregroundStyle(.secondary)
+                }
             }
             ProgressView(value: Double(q?.left ?? 0), total: 100)
+                .tint(q?.left.map { $0 < 15 ? Color.red : $0 < 40 ? Color.orange : Color.accentColor } ?? Color.accentColor)
             if let q, q.left != nil {
                 Text("Resets \(Date(timeIntervalSince1970: q.resetsAt), style: .relative)")
                     .font(.caption)

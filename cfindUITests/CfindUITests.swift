@@ -140,7 +140,7 @@ final class CfindUITests: XCTestCase {
 
         // A queued message to a working agent goes at once.
         app.tabBars.buttons["Agents"].tap()
-        app.staticTexts["slow task"].firstMatch.tap()
+        containing(app, "slow task").tap()
         XCTAssertTrue(composer.waitForExistence(timeout: 10), "no message box")
         XCTAssertFalse(app.buttons["send-now"].exists)
         composer.tap()
@@ -155,7 +155,7 @@ final class CfindUITests: XCTestCase {
 
         // A terminal menu is answered with the key buttons.
         app.tabBars.buttons["Sessions"].tap()
-        app.staticTexts["Terminal test"].firstMatch.tap()
+        containing(app, "Terminal test").tap()
         let screen = app.staticTexts["terminal-screen"]
         XCTAssertTrue(screen.waitForExistence(timeout: 10), "no terminal view while it waits")
         XCTAssertTrue(until { screen.label.contains("Pick a colour") }, screen.label)
@@ -192,6 +192,51 @@ final class CfindUITests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.25))
         }
         return check()
+    }
+
+    /// Needs a demo daemon with made-up sessions: screenshots of each screen, nothing sent.
+    func testScreens() throws {
+        let app = try pairedApp()
+        // A row shows its question in place of its title once it asks one.
+        app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@ OR label CONTAINS %@",
+                                             "The checkout test", "open a pull request")).firstMatch.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["composer"].waitForExistence(timeout: 10))
+        sleep(2)
+        shot(app, "s1-chat-end")
+        app.swipeDown()
+        app.swipeDown()
+        shot(app, "s2-chat-top")
+        app.navigationBars.buttons.firstMatch.tap()
+
+        app.tabBars.buttons["Agents"].tap()
+        sleep(1)
+        shot(app, "s3-agents")
+        containing(app, "Design a new app icon").tap()
+        XCTAssertTrue(app.descendants(matching: .any)["composer"].waitForExistence(timeout: 10))
+        sleep(2)
+        shot(app, "s4-question")
+        app.navigationBars.buttons.firstMatch.tap()
+
+        app.tabBars.buttons["Usage"].tap()
+        sleep(1)
+        shot(app, "s5-usage")
+
+        // The largest text size, still paired.
+        app.terminate()
+        app.launchArguments = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXL"]
+        app.launch()
+        XCTAssertTrue(app.tabBars.buttons["Sessions"].waitForExistence(timeout: 10))
+        sleep(2)
+        shot(app, "x1-sessions")
+        containing(app, "open a pull request").tap()
+        XCTAssertTrue(app.descendants(matching: .any)["composer"].waitForExistence(timeout: 10))
+        sleep(2)
+        shot(app, "x2-chat")
+    }
+
+    /// A list row's preview can start with its state, as in "Running · slow task".
+    func containing(_ app: XCUIApplication, _ text: String) -> XCUIElement {
+        app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
     }
 
     /// A bubble whose whole text is the answer, so the prompt and times never match.
