@@ -142,6 +142,7 @@ page is transparent (its sidebar).
 | M17 | Release build, window capture | No band at the top; buttons centred about 26pt from the top and the left. `--mac-lights` 91, `--mac-bar` 52 at zoom 1. Pass |
 | M18 | Unit tests | iOS 36/36. macOS ones left to CI: they launch a second app beside the one in use. Pass |
 | M19 | View → Full Screen (⇧⌘F) calls `toggleFullScreen`; the page no longer takes ⌘⇧F, so the menu gets it. Release build passes. Not run in the installed app yet |
+| M20 | View → Reload (⌘R) calls `reload()` on the web view; WKWebView has no reload key of its own, so ⌘R did nothing before. Release build installed at `/Applications/cfind.app` and running; the user checks ⌘R by hand. | Built, installed |
 
 The page did not paint in M17: windows opened on a Space that was not on screen,
 so WebKit skipped drawing. Check the glass and the page together after install.

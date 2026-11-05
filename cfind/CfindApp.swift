@@ -52,6 +52,9 @@ struct CfindApp: App {
                 Button("New Agent") { WebDashboard.shared.newAgent() }.keyboardShortcut("n")
             }
             CommandGroup(after: .toolbar) {
+                // A web view has no reload key of its own.
+                Button("Reload") { WebDashboard.shared.view.reload() }.keyboardShortcut("r")
+                Divider()
                 Button("Actual Size") { WebDashboard.shared.zoom(by: nil) }.keyboardShortcut("0")
                 Button("Zoom In") { WebDashboard.shared.zoom(by: 0.1) }.keyboardShortcut("+")
                 Button("Zoom Out") { WebDashboard.shared.zoom(by: -0.1) }.keyboardShortcut("-")
