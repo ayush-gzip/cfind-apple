@@ -234,6 +234,63 @@ final class CfindUITests: XCTestCase {
         shot(app, "x2-chat")
     }
 
+    /// Drives the app slowly for the demo video (context-find/demo/video). Each step
+    /// prints a CFIND_DEMO line with the time and where it tapped, for the edit.
+    /// Needs a demo daemon with made-up sessions; skipped unless CFIND_DEMO is set.
+    func testDemo() throws {
+        try XCTSkipIf(env["CFIND_DEMO"] == nil, "Only for the demo video")
+        let app = try pairedApp()
+        let size = app.frame.size
+        func log(_ fields: [String: Any]) {
+            var fields = fields
+            if fields["t"] == nil && fields["t0"] == nil { fields["t"] = Date().timeIntervalSince1970 }
+            let json = try! JSONSerialization.data(withJSONObject: fields)
+            print("CFIND_DEMO " + String(decoding: json, as: UTF8.self))
+        }
+        func scene(_ id: String) { log(["type": "scene", "id": id]) }
+        // XCUITest waits for the app to settle before it touches, so the touch lands
+        // a moment after the call.
+        func tap(_ element: XCUIElement) {
+            let f = element.frame
+            log(["type": "tap", "t": Date().timeIntervalSince1970 + 0.15, "x": f.midX / size.width, "y": f.midY / size.height])
+            element.tap()
+        }
+
+        // The recorder flashes dark mode on this line to sync the video's clock.
+        log(["type": "sync"])
+        sleep(3)
+        scene("sessions")
+        sleep(4)
+        scene("chat")
+        tap(containing(app, "open a pull request"))
+        sleep(3)
+        app.swipeDown(velocity: .slow)
+        sleep(2)
+        tap(app.navigationBars.buttons.firstMatch)
+        sleep(1)
+        scene("follow-up")
+        tap(app.tabBars.buttons["Agents"])
+        sleep(2)
+        tap(containing(app, "release notes"))
+        sleep(3)
+        let composer = app.descendants(matching: .any)["composer"]
+        tap(composer)
+        sleep(1)
+        let f = composer.frame
+        let typed = Date().timeIntervalSince1970
+        composer.typeText("Make it shorter, three bullets")
+        log(["type": "type", "t0": typed, "t1": Date().timeIntervalSince1970, "x": f.midX / size.width, "y": f.midY / size.height])
+        sleep(1)
+        tap(app.buttons["send"])
+        sleep(5)
+        tap(app.navigationBars.buttons.firstMatch)
+        sleep(1)
+        scene("usage")
+        tap(app.tabBars.buttons["Usage"])
+        sleep(4)
+        scene("end")
+    }
+
     /// A list row's preview can start with its state, as in "Running · slow task".
     func containing(_ app: XCUIApplication, _ text: String) -> XCUIElement {
         app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch

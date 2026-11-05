@@ -314,6 +314,24 @@ UICTContentSizeCategoryAccessibilityXL` for Sessions and a chat.
 The pairing screen at accessibility XL puts the address field below the fold, so a UI test
 that pairs at that size cannot find it. Not changed here.
 
+## Demo test (2026-11-05, Linear STUB-128)
+
+`testDemo` drives the app slowly for the demo video in context-find
+(`demo/video`). It is skipped unless `CFIND_DEMO` is set, so a normal test run
+does not run it. The context-find recorder runs it with
+`TEST_RUNNER_CFIND_BASE`, `TEST_RUNNER_CFIND_CODE` and `TEST_RUNNER_CFIND_DEMO=1`
+against its made-up-data daemon.
+
+Each step prints a `CFIND_DEMO {json}` line: `sync`, scene marks, taps (0-1 of
+the screen) and typing. On `sync` the recorder flashes dark mode to tie the
+simulator video clock to the test clock.
+
+| # | Case | Result |
+|---|---|---|
+| T1 | Pair, then sessions, chat, follow-up in the release notes chat, Usage | Pass, 3 runs |
+| T2 | Event times match the video after the sync | Pass: 1 fps contact sheet matches each scene |
+| T3 | Without `CFIND_DEMO` | Skipped |
+
 ## Known limits
 
 - The first metrics event is the whole snapshot (about 500 KB); after that only
